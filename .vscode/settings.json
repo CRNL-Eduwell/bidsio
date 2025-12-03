@@ -1,0 +1,32 @@
+{
+    // Python interpreter - adjust path for Windows if using different location
+    "python.defaultInterpreterPath": "${workspaceFolder}/.venv/Scripts/python.exe",
+    // Testing configuration
+    "python.testing.pytestEnabled": true,
+    "python.testing.unittestEnabled": false,
+    "python.testing.pytestArgs": [
+        "tests"
+    ],
+    // Type checking
+    "python.analysis.typeCheckingMode": "basic",
+    "python.analysis.autoImportCompletions": true,
+    // Formatting
+    "editor.formatOnSave": true,
+    "python.formatting.provider": "none",
+    // Linting
+    "python.linting.enabled": true,
+    "python.linting.pylintEnabled": false,
+    "python.linting.flake8Enabled": false,
+    // File associations
+    "files.associations": {
+        "*.ui": "xml"
+    },
+    // Exclude patterns for search/file watching
+    "files.exclude": {
+        "**/__pycache__": true,
+        "**/*.pyc": true,
+        "**/.pytest_cache": true
+    },
+    // TODO: Enable mypy or other type checkers as needed
+    // TODO: Configure code formatter (black, autopep8, etc.) if desired
+}

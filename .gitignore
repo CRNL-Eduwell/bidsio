@@ -56,9 +56,6 @@ src/bidsio/ui/forms/*_ui.py
 src/bidsio/ui/resources/resources_rc.py
 
 # IDEs
-.vscode/
-!.vscode/launch.json
-!.vscode/settings.json
 .idea/
 *.swp
 *.swo
