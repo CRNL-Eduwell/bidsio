@@ -19,14 +19,106 @@
   </property>
   <widget class="QWidget" name="centralwidget">
    <layout class="QVBoxLayout" name="verticalLayout">
+    <property name="spacing">
+     <number>0</number>
+    </property>
+    <property name="leftMargin">
+     <number>0</number>
+    </property>
+    <property name="topMargin">
+     <number>0</number>
+    </property>
+    <property name="rightMargin">
+     <number>0</number>
+    </property>
+    <property name="bottomMargin">
+     <number>0</number>
+    </property>
     <item>
-     <widget class="QLabel" name="placeholderLabel">
-      <property name="text">
-       <string>Main content area - TODO: Design in Qt Designer</string>
+     <widget class="QSplitter" name="mainSplitter">
+      <property name="orientation">
+       <enum>Qt::Horizontal</enum>
       </property>
-      <property name="alignment">
-       <set>Qt::AlignCenter</set>
-      </property>
+      <widget class="QTreeWidget" name="datasetTreeWidget">
+       <property name="minimumSize">
+        <size>
+         <width>300</width>
+         <height>0</height>
+        </size>
+       </property>
+       <property name="alternatingRowColors">
+        <bool>true</bool>
+       </property>
+       <property name="selectionMode">
+        <enum>QAbstractItemView::SingleSelection</enum>
+       </property>
+       <property name="headerHidden">
+        <bool>true</bool>
+       </property>
+       <column>
+        <property name="text">
+         <string>Dataset Structure</string>
+        </property>
+       </column>
+      </widget>
+      <widget class="QScrollArea" name="detailsScrollArea">
+       <property name="widgetResizable">
+        <bool>true</bool>
+       </property>
+       <widget class="QWidget" name="scrollAreaWidgetContents">
+        <property name="geometry">
+         <rect>
+          <x>0</x>
+          <y>0</y>
+          <width>600</width>
+          <height>700</height>
+         </rect>
+        </property>
+        <layout class="QVBoxLayout" name="detailsLayout">
+         <property name="spacing">
+          <number>10</number>
+         </property>
+         <property name="leftMargin">
+          <number>10</number>
+         </property>
+         <property name="topMargin">
+          <number>10</number>
+         </property>
+         <property name="rightMargin">
+          <number>10</number>
+         </property>
+         <property name="bottomMargin">
+          <number>10</number>
+         </property>
+         <item>
+          <widget class="QLabel" name="detailsPlaceholderLabel">
+           <property name="text">
+            <string>Select an item to view details</string>
+           </property>
+           <property name="alignment">
+            <set>Qt::AlignCenter</set>
+           </property>
+           <property name="wordWrap">
+            <bool>true</bool>
+           </property>
+          </widget>
+         </item>
+         <item>
+          <spacer name="verticalSpacer">
+           <property name="orientation">
+            <enum>Qt::Vertical</enum>
+           </property>
+           <property name="sizeHint" stdset="0">
+            <size>
+             <width>20</width>
+             <height>40</height>
+            </size>
+           </property>
+          </spacer>
+         </item>
+        </layout>
+       </widget>
+      </widget>
      </widget>
     </item>
    </layout>
@@ -91,12 +183,3 @@
  </resources>
  <connections/>
 </ui>
-
-<!-- TODO: Design the complete UI in Qt Designer with:
-     - Central widget with splitter for dataset browser and details
-     - Left dock: Filter controls (checkboxes, lists for subjects, sessions, tasks, modalities)
-     - Main area: Table or tree view of dataset contents
-     - Right dock: Details panel for selected items
-     - Toolbar with common actions (Open, Export, Refresh)
-     - Status bar with dataset statistics
--->
