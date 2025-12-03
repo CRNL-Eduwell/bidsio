@@ -1,4 +1,5 @@
-"""Infrastructure layer package.
+"""
+Infrastructure layer package.
 
 This package contains modules for interacting with the outside world:
 - Filesystem operations

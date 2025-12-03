@@ -1,4 +1,4 @@
-"""Tests package for BIDSIO.
+"""Tests package for bidsio.
 
 This package contains all test modules using pytest.
 """

@@ -9,13 +9,13 @@ from typing import Optional
 
 from PySide6.QtWidgets import QMainWindow, QFileDialog, QMessageBox
 from PySide6.QtCore import Slot
-from PySide6.QtUiTools import QUiLoader
-from PySide6.QtCore import QFile
 
-from ..infrastructure.logging_config import get_logger
-from ..core.repository import BidsRepository
-from ..core.models import BIDSDataset, FilterCriteria
-from .view_models import DatasetViewModel
+from bidsio.infrastructure.logging_config import get_logger
+from bidsio.core.repository import BidsRepository
+from bidsio.core.models import BIDSDataset, FilterCriteria
+from bidsio.ui.view_models import DatasetViewModel
+from bidsio.ui.about_dialog import AboutDialog
+from bidsio.ui.forms.main_window_ui import Ui_MainWindow
 
 
 logger = get_logger(__name__)
@@ -37,9 +37,6 @@ class MainWindow(QMainWindow):
         self._dataset: Optional[BIDSDataset] = None
         self._view_model: Optional[DatasetViewModel] = None
         
-        # TODO: load UI from .ui file using QUiLoader or uic.loadUi
-        # TODO: for now, create a minimal window manually for bootstrapping
-        
         self._setup_ui()
         self._connect_signals()
         
@@ -47,52 +44,49 @@ class MainWindow(QMainWindow):
     
     def _setup_ui(self):
         """Setup the user interface."""
-        # TODO: Replace this with actual UI loading from .ui file
-        # ui_file_path = Path(__file__).parent / "ui_files" / "main_window.ui"
-        # loader = QUiLoader()
-        # ui_file = QFile(str(ui_file_path))
-        # ui_file.open(QFile.ReadOnly)
-        # self.ui = loader.load(ui_file, self)
-        # ui_file.close()
-        
-        self.setWindowTitle("BIDSIO - BIDS Dataset Explorer")
-        self.resize(1200, 800)
-        
-        # TODO: create proper UI elements once .ui file exists
-        # TODO: setup menu bar
-        # TODO: setup toolbar
-        # TODO: setup status bar
-        # TODO: setup central widget with dataset browser
-        # TODO: setup dock widgets for filters and details
-        
-        logger.debug("UI setup completed (placeholder)")
+        # Import the generated UI class
+        try:
+            # Setup UI using generated class
+            self.ui = Ui_MainWindow()
+            self.ui.setupUi(self)
+            
+            logger.debug("UI setup complete")
+        except ImportError as e:
+            logger.error(f"Failed to import generated UI file: {e}")
+            logger.error("Run 'python scripts/generate_ui.py' to generate UI files from .ui sources")
+            # Fallback to basic window
+            self.setWindowTitle("bidsio - BIDS Dataset Explorer")
+            self.resize(1200, 800)
     
     def _connect_signals(self):
         """Connect signals and slots."""
-        # TODO: connect File menu actions
+        # Connect menu actions - they are accessible via self.ui
+        if hasattr(self.ui, 'actionLoadDataset'):
+            self.ui.actionLoadDataset.triggered.connect(self.load_dataset)
+        
+        if hasattr(self.ui, 'actionClose'):
+            self.ui.actionClose.triggered.connect(self.close)
+        
+        if hasattr(self.ui, 'actionAbout'):
+            self.ui.actionAbout.triggered.connect(self.show_about)
+        
         # TODO: connect toolbar buttons
         # TODO: connect dataset browser selection changes
         # TODO: connect filter controls
         # TODO: connect export action
         
-        logger.debug("Signals connected (placeholder)")
+        logger.debug("Signals connected")
     
     @Slot()
-    def open_dataset(self):
+    def load_dataset(self):
         """
-        Open a BIDS dataset directory.
+        Load a BIDS dataset directory.
         
         Shows a directory picker dialog and loads the selected dataset.
         """
-        # TODO: open directory picker dialog
-        # TODO: validate selected directory is a BIDS dataset
-        # TODO: create BidsRepository and load dataset
-        # TODO: populate UI with dataset contents
-        # TODO: handle errors (invalid dataset, loading failures)
-        
         directory = QFileDialog.getExistingDirectory(
             self,
-            "Open BIDS Dataset",
+            "Load BIDS Dataset",
             "",
             QFileDialog.Option.ShowDirsOnly | QFileDialog.Option.DontResolveSymlinks
         )
@@ -118,6 +112,13 @@ class MainWindow(QMainWindow):
                     "Error",
                     f"Failed to load dataset:\n{str(e)}"
                 )
+    
+    @Slot()
+    def show_about(self):
+        """Show the About dialog."""
+        dialog = AboutDialog(self)
+        dialog.exec()
+        logger.debug("About dialog shown")
     
     @Slot()
     def close_dataset(self):

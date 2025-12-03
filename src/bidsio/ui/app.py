@@ -15,10 +15,12 @@ if __name__ == "__main__":
 
 from PySide6.QtWidgets import QApplication
 from PySide6.QtCore import Qt
+from PySide6.QtGui import QIcon
 
 from bidsio.infrastructure.logging_config import setup_logging, get_logger
 from bidsio.config.settings import get_settings
 from bidsio.ui.main_window import MainWindow
+import bidsio.ui.resources_rc  # Import resources to register them
 
 
 logger = get_logger(__name__)
@@ -33,18 +35,20 @@ def main():
     log_file = settings.log_file_path if settings.log_to_file else None
     setup_logging(level=settings.log_level, log_file=log_file)
     
-    logger.info("Starting BIDSIO application")
+    logger.info("Starting bidsio application")
     
     # TODO: set application metadata (name, organization, version)
     # TODO: handle high DPI displays appropriately
     
     # Create Qt application
     app = QApplication(sys.argv)
-    app.setApplicationName("BIDSIO")
-    app.setOrganizationName("BIDSIO")
+    app.setApplicationName("bidsio")
+    app.setOrganizationName("bidsio")
     app.setApplicationVersion("0.1.0")
     
-    # TODO: set application icon
+    # Set application icon
+    app.setWindowIcon(QIcon(":/icon.png"))
+    
     # TODO: apply theme/stylesheet if configured
     
     # Create and show main window

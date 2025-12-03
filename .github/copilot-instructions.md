@@ -1,10 +1,10 @@
-# GitHub Copilot Instructions for BIDSIO
+# GitHub Copilot Instructions for bidsio
 
-You are assisting in developing **BIDSIO**, a Python desktop application for exploring, filtering, and exporting BIDS (Brain Imaging Data Structure) datasets.
+You are assisting in developing **bidsio**, a Python desktop application for exploring, filtering, and exporting BIDS (Brain Imaging Data Structure) datasets.
 
 ## Project Overview
 
-**BIDSIO** is a neuroimaging dataset management tool that provides:
+**bidsio** is a neuroimaging dataset management tool that provides:
 - Loading and indexing of BIDS-compliant datasets
 - Browsing and inspecting dataset contents (subjects, sessions, runs, files)
 - Filtering data by various criteria (subject IDs, sessions, tasks, modalities)
@@ -36,14 +36,34 @@ You are assisting in developing **BIDSIO**, a Python desktop application for exp
    - These modules must remain GUI-agnostic and independently testable
    - All business logic belongs in `core/`, not in UI classes
 
-3. **UI Design Workflow**
-   - All static UI layouts MUST be defined in Qt Designer `.ui` files
-   - Place `.ui` files in `src/bidsio/ui/ui_files/`
-   - Load `.ui` files using `QUiLoader` or `uic.loadUi`
-   - Only create widgets programmatically if they are truly dynamic
-   - Keep GUI classes thin - they should wire up view models, not implement logic
+3. **UI Design Workflow - STRICTLY ENFORCED**
+   - **ALL UI layouts MUST be defined in Qt Designer `.ui` files - NO EXCEPTIONS**
+   - **NEVER create widgets programmatically in Python code** (QLabel, QPushButton, QVBoxLayout, etc.)
+   - This applies to ALL dialogs, windows, and UI components - even simple ones
+   - **Workflow:**
+     1. Design UI in Qt Designer and save `.ui` files in `src/bidsio/ui/forms/`
+     2. Compile `.ui` files to Python modules (multiple options):
+        - Run `python scripts/generate_ui.py` (auto-detects all `.ui` files)
+        - Right-click `.ui` file → "Compile Qt UI file" (Qt extension)
+        - Run `pyside6-uic <file>.ui -o <file>_ui.py` manually
+     3. Import generated `Ui_*` classes and call `setupUi(self)` in your widget/dialog/window
+   - Generated files are named `<original_name>_ui.py` (e.g., `main_window.ui` → `main_window_ui.py`)
+   - Python UI classes should ONLY import the generated UI class, call `setupUi()`, and connect signals/slots
+   - The ONLY exceptions are truly dynamic widgets whose structure depends on runtime data
+   - Keep GUI classes thin - they should wire up view models, not implement logic or create layouts
+   - **Always recompile UI files after modifying `.ui` files in Qt Designer**
 
-4. **Domain Logic First**
+4. **Import Organization**
+   - **ALL imports MUST be at the top of the file**
+   - Group imports in the following order:
+     1. Standard library imports
+     2. Third-party imports (PySide6, pydantic, etc.)
+     3. Local application imports (from bidsio.*)
+   - Separate each group with a blank line
+   - Sort imports alphabetically within each group
+   - **NEVER use conditional imports or imports inside functions** (except in rare cases with clear justification)
+
+5. **Domain Logic First**
    - Core business logic must work without any UI
    - Use typed dataclasses or Pydantic models for data
    - All operations should be testable in isolation
@@ -81,7 +101,7 @@ You are assisting in developing **BIDSIO**, a Python desktop application for exp
 │       │   ├── view_models.py   # Qt models for views
 │       │   ├── widgets/         # Custom widgets
 │       │   │   └── __init__.py
-│       │   └── ui_files/        # Qt Designer .ui files
+│       │   └── forms/           # Qt Designer .ui files and generated Python
 │       │       └── main_window.ui
 │       └── cli/                  # Command-line interface
 │           ├── __init__.py
@@ -127,7 +147,7 @@ You are assisting in developing **BIDSIO**, a Python desktop application for exp
 - `main_window.py`: Main window controller, loads `main_window.ui`
 - `view_models.py`: Qt models (QAbstractTableModel, QAbstractItemModel) for views
 - `widgets/`: Custom reusable widgets
-- `ui_files/`: Qt Designer `.ui` files (XML)
+- `forms/`: Qt Designer `.ui` files (XML) and generated Python modules
 
 ### `cli/` - Command Line Interface
 **Purpose**: Command-line tools for dataset operations  
@@ -148,6 +168,20 @@ You are assisting in developing **BIDSIO**, a Python desktop application for exp
 - Use `PascalCase` for classes
 - Use type hints for all function signatures
 - Write comprehensive docstrings for all public APIs
+- **Organize imports at the top of the file:**
+  ```python
+  # Standard library
+  from pathlib import Path
+  from typing import Optional
+  
+  # Third-party
+  from PySide6.QtWidgets import QMainWindow
+  from PySide6.QtCore import Slot
+  
+  # Local application
+  from bidsio.core.models import BIDSDataset
+  from bidsio.infrastructure.logging_config import get_logger
+  ```
 
 ### Type Hints
 Always use Python 3.10+ type hint syntax:
@@ -213,34 +247,53 @@ When adding new features:
 5. Implement incrementally, following TODOs
 
 ### GUI Development
-1. Design UI in Qt Designer and save as `.ui` file in `src/bidsio/ui/ui_files/`
-2. Create controller class in `ui/` that loads the `.ui` file
-3. Wire up signals/slots to methods
-4. Delegate all business logic to `core/` or `infrastructure/`
-5. Use view models to present data to Qt views
+
+**UI Creation Workflow:**
+
+1. **Design UI in Qt Designer** and save as `.ui` file in `src/bidsio/ui/forms/`
+2. **Compile `.ui` file** to Python module (choose one):
+   - Run `python scripts/generate_ui.py` (compiles all `.ui` files automatically)
+   - Right-click `.ui` file in VS Code → "Compile Qt UI file" (Qt extension)
+   - Run `pyside6-uic main_window.ui -o main_window_ui.py` manually
+   - Generated files use `<name>_ui.py` naming (e.g., `main_window.ui` → `main_window_ui.py`)
+3. **Create controller class** in `ui/` that imports and uses the generated UI class
+4. **Wire up signals/slots** to methods
+5. **Delegate all business logic** to `core/` or `infrastructure/`
+6. Use view models to present data to Qt views
+
+**Important:** Always recompile UI files after modifying `.ui` files in Qt Designer. When debugging with F5, UI files are automatically compiled via preLaunchTask.
+
+**Resources Management:**
+
+Icons and other resources use Qt's resource system:
+1. Add resources to `src/bidsio/ui/resources/resources.qrc`
+2. Run `python scripts/generate_ui.py` (compiles both UI and resources automatically)
+3. Import in app: `import bidsio.ui.resources_rc`
+4. Use with `:/` prefix: `QIcon(":/icon.png")`
+
+Note: The generate_ui.py script automatically fixes resource imports in generated UI files.
 
 Example:
 ```python
 from PySide6.QtWidgets import QMainWindow
-from PySide6.QtUiTools import QUiLoader
-from PySide6.QtCore import QFile, Slot
+from PySide6.QtCore import Slot
+
+from bidsio.ui.forms.main_window_ui import Ui_MainWindow
 
 class MainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
-        self._load_ui()
+        self._setup_ui()
         self._connect_signals()
     
-    def _load_ui(self):
-        ui_file = QFile("src/bidsio/ui/ui_files/main_window.ui")
-        ui_file.open(QFile.ReadOnly)
-        loader = QUiLoader()
-        self.ui = loader.load(ui_file, self)
-        ui_file.close()
+    def _setup_ui(self):
+        """Setup UI using generated class."""
+        self.ui = Ui_MainWindow()
+        self.ui.setupUi(self)
     
     def _connect_signals(self):
-        # TODO: connect UI signals to slots
-        pass
+        """Connect UI signals to slots."""
+        self.ui.actionOpen.triggered.connect(self.open_dataset)
     
     @Slot()
     def open_dataset(self):
@@ -309,6 +362,7 @@ logger.error(f"Failed to load: {e}")
 - Testing domain logic
 - Using `.ui` files for static layouts
 - Logging instead of print statements
+- All imports at the top of the file, properly organized
 
 ### ❌ Discourage
 - GUI imports in `core/` or `infrastructure/`
@@ -317,13 +371,41 @@ logger.error(f"Failed to load: {e}")
 - Global mutable state
 - Missing type hints or docstrings
 - Print statements (use logging)
+- Imports inside functions or conditional imports (except rare justified cases)
 
 ### 🔧 Suggest Improvements
 If the user writes GUI code in `core/`:
 > "This logic should remain in the `ui/` module to maintain separation. Let's move it and create a method in `core/` that returns the data needed for display."
 
 If the user hard-codes widgets:
-> "Consider designing this in Qt Designer and saving it as a `.ui` file. This keeps the layout separate from logic and makes it easier to iterate on the design."
+> "All UI layouts must be created in Qt Designer as `.ui` files. Let me create a `.ui` file for this dialog/window instead of hard-coding the widgets in Python."
+
+### 🚫 NEVER Do This
+**DO NOT create UI layouts programmatically like this:**
+```python
+# ❌ WRONG - Do not do this!
+layout = QVBoxLayout()
+label = QLabel("Some text")
+button = QPushButton("Click me")
+layout.addWidget(label)
+layout.addWidget(button)
+```
+
+**ALWAYS create a `.ui` file in Qt Designer and generate Python code:**
+```python
+# ✅ CORRECT
+# 1. Create dialog.ui in Qt Designer
+# 2. Compile: python scripts/generate_ui.py (or right-click → Compile Qt UI file)
+# 3. Use generated class:
+
+from bidsio.ui.forms.dialog_ui import Ui_Dialog
+
+class MyDialog(QDialog):
+    def __init__(self):
+        super().__init__()
+        self.ui = Ui_Dialog()
+        self.ui.setupUi(self)
+```
 
 ## VS Code Integration
 

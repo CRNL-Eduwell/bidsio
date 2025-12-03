@@ -1,5 +1,5 @@
 """
-Command-line interface for BIDSIO.
+Command-line interface for bidsio.
 
 This module provides a CLI for basic BIDS dataset operations.
 """
@@ -33,7 +33,7 @@ def create_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--version",
         action="version",
-        version="BIDSIO 0.1.0"
+        version="bidsio 0.1.0"
     )
     
     parser.add_argument(
