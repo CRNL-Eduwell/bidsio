@@ -20,7 +20,7 @@ from PySide6.QtGui import QIcon
 from bidsio.infrastructure.logging_config import setup_logging, get_logger
 from bidsio.config.settings import get_settings
 from bidsio.ui.main_window import MainWindow
-import bidsio.ui.resources_rc  # Import resources to register them
+import bidsio.ui.resources.resources_rc  # Import resources to register them
 
 
 logger = get_logger(__name__)

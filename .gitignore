@@ -53,7 +53,7 @@ cover/
 src/bidsio/ui/forms/*_ui.py
 
 # Generated resource files (recompile with pyside6-rcc)
-src/bidsio/ui/resources_rc.py
+src/bidsio/ui/resources/resources_rc.py
 
 # IDEs
 .vscode/

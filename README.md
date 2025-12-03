@@ -107,11 +107,11 @@ Icons and other resources are managed using Qt's resource system:
    ```
    Or manually:
    ```bash
-   pyside6-rcc src/bidsio/ui/resources/resources.qrc -o src/bidsio/ui/resources_rc.py
+   pyside6-rcc src/bidsio/ui/resources/resources.qrc -o src/bidsio/ui/resources/resources_rc.py
    ```
 3. **Import resources** in your application:
    ```python
-   import bidsio.ui.resources_rc  # Registers resources
+   import bidsio.ui.resources.resources_rc  # Registers resources
    ```
 4. **Use resources** with the `:/` prefix:
    ```python

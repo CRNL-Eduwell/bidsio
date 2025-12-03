@@ -268,7 +268,7 @@ When adding new features:
 Icons and other resources use Qt's resource system:
 1. Add resources to `src/bidsio/ui/resources/resources.qrc`
 2. Run `python scripts/generate_ui.py` (compiles both UI and resources automatically)
-3. Import in app: `import bidsio.ui.resources_rc`
+3. Import in app: `import bidsio.ui.resources.resources_rc`
 4. Use with `:/` prefix: `QIcon(":/icon.png")`
 
 Note: The generate_ui.py script automatically fixes resource imports in generated UI files.

@@ -21,7 +21,7 @@ def compile_resources():
     """Compile Qt resource files to Python module."""
     project_root = Path(__file__).parent.parent
     qrc_file = project_root / "src" / "bidsio" / "ui" / "resources" / "resources.qrc"
-    output_file = project_root / "src" / "bidsio" / "ui" / "resources_rc.py"
+    output_file = project_root / "src" / "bidsio" / "ui" / "resources" / "resources_rc.py"
     
     if not qrc_file.exists():
         print(f"Warning: Resource file not found: {qrc_file}")
@@ -54,11 +54,11 @@ def fix_resource_imports(ui_file_path):
     """Fix resource imports in generated UI files to use full module path."""
     try:
         content = ui_file_path.read_text()
-        # Replace 'import resources_rc' with 'import bidsio.ui.resources_rc as resources_rc'
-        if 'import resources_rc' in content and 'import bidsio.ui.resources_rc' not in content:
+        # Replace 'import resources_rc' with 'import bidsio.ui.resources.resources_rc as resources_rc'
+        if 'import resources_rc' in content and 'import bidsio.ui.resources.resources_rc' not in content:
             content = re.sub(
                 r'^import resources_rc$',
-                'import bidsio.ui.resources_rc as resources_rc',
+                'import bidsio.ui.resources.resources_rc as resources_rc',
                 content,
                 flags=re.MULTILINE
             )
