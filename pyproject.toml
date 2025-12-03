@@ -1,0 +1,15 @@
+[project]
+name = "bidsio"
+version = "0.1.0"
+description = "A BIDS dataset explorer to browse, filter, and export subsets."
+requires-python = ">=3.13,<3.14"
+readme = "README.md"
+authors = [
+    {name = "Your Name", email = "your.email@example.com"},
+]
+
+[project.optional-dependencies]
+dev = ["pytest", "pytest-qt"]
+
+# TODO: decide on build backend (e.g. setuptools) if packaging is needed.
+# TODO: add entry points for CLI and GUI if needed.
