@@ -80,7 +80,9 @@ class BIDSSubject:
     files: list[BIDSFile] = field(default_factory=list)
     """Subject-level files not associated with a specific session."""
     
-    # TODO: add participant metadata (age, sex, etc.) from participants.tsv
+    metadata: dict[str, str] = field(default_factory=dict)
+    """Participant metadata from participants.tsv (age, sex, group, etc.)."""
+    
     # TODO: add methods to query sessions by ID
 
 

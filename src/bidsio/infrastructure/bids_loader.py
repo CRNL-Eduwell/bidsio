@@ -5,7 +5,9 @@ This module is responsible for reading BIDS datasets from the filesystem
 and constructing in-memory representations.
 """
 
+import csv
 import json
+import re
 from pathlib import Path
 from typing import Optional
 
@@ -16,6 +18,9 @@ from ..core.models import (
     BIDSRun,
     BIDSFile
 )
+from .logging_config import get_logger
+
+logger = get_logger(__name__)
 
 
 class BidsLoader:
@@ -46,17 +51,38 @@ class BidsLoader:
             FileNotFoundError: If root_path does not exist.
             ValueError: If the directory is not a valid BIDS dataset.
         """
-        # TODO: validate that root_path exists
-        # TODO: check for dataset_description.json
-        # TODO: scan for subjects (sub-* directories)
-        # TODO: for each subject, scan for sessions (ses-* directories)
-        # TODO: for each session, scan for modality directories (anat, func, etc.)
-        # TODO: parse BIDS filenames to extract entities
-        # TODO: group files into runs appropriately
-        # TODO: load dataset_description.json
-        # TODO: consider using pybids library for robust parsing
-        # TODO: handle derivatives directory if present
-        raise NotImplementedError("load() is not implemented yet.")
+        logger.info(f"Loading BIDS dataset from: {self.root_path}")
+        
+        # Validate that root_path exists
+        if not self.root_path.exists():
+            raise FileNotFoundError(f"Dataset path does not exist: {self.root_path}")
+        
+        if not self.root_path.is_dir():
+            raise ValueError(f"Path is not a directory: {self.root_path}")
+        
+        # Validate BIDS structure
+        if not self._validate_bids_root():
+            raise ValueError(f"Directory is not a valid BIDS dataset: {self.root_path}")
+        
+        # Load dataset description
+        dataset_description = self._load_dataset_description()
+        logger.debug(f"Dataset: {dataset_description.get('Name', 'Unknown')}")
+        
+        # Load participant metadata
+        participant_metadata = self._load_participants_tsv()
+        
+        # Scan for subjects
+        subjects = self._scan_subjects(participant_metadata)
+        logger.info(f"Found {len(subjects)} subjects")
+        
+        # Create dataset object
+        dataset = BIDSDataset(
+            root_path=self.root_path,
+            subjects=subjects,
+            dataset_description=dataset_description
+        )
+        
+        return dataset
     
     def _validate_bids_root(self) -> bool:
         """
@@ -65,10 +91,28 @@ class BidsLoader:
         Returns:
             True if valid, False otherwise.
         """
-        # TODO: check for dataset_description.json
-        # TODO: validate required fields in dataset_description.json
-        # TODO: optionally check for README
-        raise NotImplementedError("_validate_bids_root() is not implemented yet.")
+        desc_path = self.root_path / "dataset_description.json"
+        
+        if not desc_path.exists():
+            logger.error("Missing dataset_description.json")
+            return False
+        
+        try:
+            with open(desc_path, 'r', encoding='utf-8') as f:
+                desc = json.load(f)
+                
+            # Check required fields
+            if "Name" not in desc:
+                logger.warning("dataset_description.json missing 'Name' field")
+            
+            if "BIDSVersion" not in desc:
+                logger.warning("dataset_description.json missing 'BIDSVersion' field")
+            
+            return True
+            
+        except (json.JSONDecodeError, IOError) as e:
+            logger.error(f"Failed to read dataset_description.json: {e}")
+            return False
     
     def _load_dataset_description(self) -> dict:
         """
@@ -79,32 +123,102 @@ class BidsLoader:
         """
         desc_path = self.root_path / "dataset_description.json"
         
-        # TODO: handle missing file
-        # TODO: validate JSON structure
-        # TODO: check required fields (Name, BIDSVersion)
-        
         if not desc_path.exists():
+            logger.warning("dataset_description.json not found")
             return {}
         
         try:
             with open(desc_path, 'r', encoding='utf-8') as f:
                 return json.load(f)
-        except json.JSONDecodeError:
-            # TODO: proper error handling
+        except json.JSONDecodeError as e:
+            logger.error(f"Failed to parse dataset_description.json: {e}")
             return {}
     
-    def _scan_subjects(self) -> list[BIDSSubject]:
+    def _load_participants_tsv(self) -> dict[str, dict[str, str]]:
+        """
+        Load the participants.tsv file and parse metadata.
+        
+        Returns:
+            Dictionary mapping subject IDs to their metadata.
+        """
+        participants_path = self.root_path / "participants.tsv"
+        
+        if not participants_path.exists():
+            logger.info("participants.tsv not found, skipping metadata loading")
+            return {}
+        
+        try:
+            participants_metadata = {}
+            
+            with open(participants_path, 'r', encoding='utf-8') as f:
+                reader = csv.DictReader(f, delimiter='\t')
+                
+                for row in reader:
+                    # Extract participant_id (should be first column)
+                    participant_id = row.get('participant_id', '')
+                    
+                    if participant_id:
+                        # Remove 'sub-' prefix if present for consistency
+                        subject_id = participant_id.replace('sub-', '')
+                        
+                        # Store all other columns as metadata
+                        metadata = {k: v for k, v in row.items() if k != 'participant_id'}
+                        participants_metadata[subject_id] = metadata
+                        
+            logger.debug(f"Loaded metadata for {len(participants_metadata)} participants")
+            return participants_metadata
+            
+        except Exception as e:
+            logger.error(f"Failed to load participants.tsv: {e}")
+            return {}
+    
+    def _scan_subjects(self, participant_metadata: dict[str, dict[str, str]]) -> list[BIDSSubject]:
         """
         Scan the dataset root for subject directories.
+        
+        Args:
+            participant_metadata: Dictionary mapping subject IDs to their metadata.
         
         Returns:
             List of BIDSSubject objects.
         """
-        # TODO: find all directories matching pattern 'sub-*'
-        # TODO: extract subject ID from directory name
-        # TODO: for each subject, scan for sessions
-        # TODO: handle subjects without sessions
-        raise NotImplementedError("_scan_subjects() is not implemented yet.")
+        subjects = []
+        
+        # Find all directories matching pattern 'sub-*'
+        subject_dirs = sorted(self.root_path.glob('sub-*'))
+        
+        for subject_dir in subject_dirs:
+            if not subject_dir.is_dir():
+                continue
+            
+            # Extract subject ID from directory name
+            subject_id = subject_dir.name.replace('sub-', '')
+            
+            logger.debug(f"Scanning subject: {subject_id}")
+            
+            # Get metadata for this subject
+            metadata = participant_metadata.get(subject_id, {})
+            
+            # Scan for sessions
+            sessions = self._scan_sessions(subject_dir)
+            
+            # If no sessions, scan the subject directory directly for files
+            subject_files = []
+            if not sessions:
+                # Single-session dataset, scan subject directory directly
+                _, subject_files = self._scan_files(subject_dir)
+            
+            # Create subject object
+            subject = BIDSSubject(
+                subject_id=subject_id,
+                sessions=sessions,
+                files=subject_files,
+                metadata=metadata
+            )
+            
+            subjects.append(subject)
+        
+        return subjects
     
     def _scan_sessions(self, subject_path: Path) -> list[BIDSSession]:
         """
@@ -116,11 +230,33 @@ class BidsLoader:
         Returns:
             List of BIDSSession objects.
         """
-        # TODO: find all directories matching pattern 'ses-*'
-        # TODO: extract session ID from directory name
-        # TODO: if no sessions found, treat as single-session dataset
-        # TODO: for each session, scan for modality directories and files
-        raise NotImplementedError("_scan_sessions() is not implemented yet.")
+        sessions = []
+        
+        # Find all directories matching pattern 'ses-*'
+        session_dirs = sorted(subject_path.glob('ses-*'))
+        
+        for session_dir in session_dirs:
+            if not session_dir.is_dir():
+                continue
+            
+            # Extract session ID from directory name
+            session_id = session_dir.name.replace('ses-', '')
+            
+            logger.debug(f"  Scanning session: {session_id}")
+            
+            # Scan for files in this session
+            runs, session_files = self._scan_files(session_dir)
+            
+            # Create session object
+            session = BIDSSession(
+                session_id=session_id,
+                runs=runs,
+                files=session_files
+            )
+            
+            sessions.append(session)
+        
+        return sessions
     
     def _scan_files(self, session_path: Path) -> tuple[list[BIDSRun], list[BIDSFile]]:
         """
@@ -132,28 +268,83 @@ class BidsLoader:
         Returns:
             Tuple of (runs, session_level_files).
         """
-        # TODO: scan modality directories (anat, func, dwi, fmap, etc.)
-        # TODO: parse BIDS filenames to extract entities
-        # TODO: group files into runs based on entities
-        # TODO: identify session-level files vs run-level files
-        raise NotImplementedError("_scan_files() is not implemented yet.")
+        all_files = []
+        
+        # Scan for anat and ieeg directories (as requested)
+        modality_dirs = ['anat', 'ieeg']
+        
+        for modality in modality_dirs:
+            modality_path = session_path / modality
+            
+            if not modality_path.exists() or not modality_path.is_dir():
+                continue
+            
+            logger.debug(f"    Scanning modality: {modality}")
+            
+            # Find all files in this modality directory
+            for filepath in modality_path.iterdir():
+                if filepath.is_file():
+                    # Parse the BIDS filename
+                    bids_file = self._parse_bids_filename(filepath, modality)
+                    all_files.append(bids_file)
+        
+        # For now, we'll treat all files as session-level files
+        # In the future, we could group them into runs based on entities
+        runs = []
+        session_files = all_files
+        
+        return runs, session_files
     
-    def _parse_bids_filename(self, filepath: Path) -> BIDSFile:
+    def _parse_bids_filename(self, filepath: Path, modality: str) -> BIDSFile:
         """
         Parse a BIDS filename to extract entities and metadata.
         
         Args:
             filepath: Path to the BIDS file.
+            modality: The modality directory (anat, ieeg, etc.).
             
         Returns:
             A BIDSFile object with parsed entities.
         """
-        # TODO: extract entities from filename (sub, ses, task, run, etc.)
-        # TODO: extract suffix (T1w, bold, events, etc.)
-        # TODO: extract extension (.nii.gz, .json, .tsv)
-        # TODO: determine modality from parent directory or suffix
-        # TODO: consider using pybids parsing utilities
-        raise NotImplementedError("_parse_bids_filename() is not implemented yet.")
+        filename = filepath.name
+        
+        # Extract extension (handle .nii.gz as single extension)
+        if filename.endswith('.nii.gz'):
+            extension = '.nii.gz'
+            name_without_ext = filename[:-7]
+        else:
+            extension = filepath.suffix
+            name_without_ext = filepath.stem
+        
+        # Parse BIDS entities from filename using regex
+        # BIDS entities follow pattern: key-value
+        entity_pattern = r'([a-z]+)-([a-zA-Z0-9]+)'
+        entities = {}
+        
+        for match in re.finditer(entity_pattern, name_without_ext):
+            key = match.group(1)
+            value = match.group(2)
+            entities[key] = value
+        
+        # Extract suffix (last part of filename before extension)
+        # Format: sub-XX_ses-YY_..._SUFFIX.extension
+        parts = name_without_ext.split('_')
+        suffix = parts[-1] if parts else None
+        
+        # If suffix contains a dash, it's an entity, not a suffix
+        if suffix and '-' in suffix:
+            suffix = None
+        
+        # Create BIDSFile object
+        bids_file = BIDSFile(
+            path=filepath,
+            modality=modality,
+            suffix=suffix,
+            extension=extension,
+            entities=entities
+        )
+        
+        return bids_file
 
 
 def is_bids_dataset(path: Path) -> bool:

@@ -94,19 +94,54 @@ class MainWindow(QMainWindow):
         if directory:
             logger.info(f"Loading dataset from: {directory}")
             try:
-                # TODO: actual loading implementation
-                # self._repository = BidsRepository(Path(directory))
-                # self._dataset = self._repository.load()
+                # Create repository and load dataset
+                self._repository = BidsRepository(Path(directory))
+                self._dataset = self._repository.load()
+                
+                # TODO: Create view model when needed for display
                 # self._view_model = DatasetViewModel(self._dataset)
                 # self._update_ui()
                 
+                # Show success message with basic info
+                num_subjects = len(self._dataset.subjects)
+                dataset_name = self._dataset.dataset_description.get('Name', 'Unknown')
+                
+                # Count total files
+                total_files = 0
+                for subject in self._dataset.subjects:
+                    total_files += len(subject.files)
+                    for session in subject.sessions:
+                        total_files += len(session.files)
+                
                 QMessageBox.information(
                     self,
-                    "Not Implemented",
-                    "Dataset loading is not yet implemented."
+                    "Dataset Loaded",
+                    f"Successfully loaded BIDS dataset:\n\n"
+                    f"Name: {dataset_name}\n"
+                    f"Subjects: {num_subjects}\n"
+                    f"Files: {total_files}\n\n"
+                    f"(Display functionality will be implemented next)"
+                )
+                
+                logger.info(f"Dataset loaded successfully: {num_subjects} subjects, {total_files} files")
+                
+            except FileNotFoundError as e:
+                logger.error(f"Dataset path not found: {e}")
+                QMessageBox.critical(
+                    self,
+                    "Error",
+                    f"Dataset path not found:\n{str(e)}"
+                )
+            except ValueError as e:
+                logger.error(f"Invalid BIDS dataset: {e}")
+                QMessageBox.critical(
+                    self,
+                    "Error",
+                    f"Invalid BIDS dataset:\n{str(e)}\n\n"
+                    f"Make sure the directory contains a dataset_description.json file."
                 )
             except Exception as e:
-                logger.error(f"Failed to load dataset: {e}")
+                logger.error(f"Failed to load dataset: {e}", exc_info=True)
                 QMessageBox.critical(
                     self,
                     "Error",

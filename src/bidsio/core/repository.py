@@ -9,6 +9,7 @@ from pathlib import Path
 from typing import Optional
 
 from .models import BIDSDataset, BIDSSubject, FilterCriteria
+from ..infrastructure.bids_loader import BidsLoader
 
 
 class BidsRepository:
@@ -43,11 +44,18 @@ class BidsRepository:
             ValueError: If the path is not a valid BIDS dataset.
             FileNotFoundError: If the root path does not exist.
         """
-        # TODO: delegate to infrastructure layer (BidsLoader) for actual loading
-        # TODO: validate BIDS compliance (check for dataset_description.json)
-        # TODO: build in-memory index of subjects/sessions/runs
-        # TODO: cache the loaded dataset to avoid re-loading
-        raise NotImplementedError("load() is not implemented yet.")
+        # Validate that root_path exists
+        if not self.root_path.exists():
+            raise FileNotFoundError(f"Dataset path does not exist: {self.root_path}")
+        
+        if not self.root_path.is_dir():
+            raise ValueError(f"Path is not a directory: {self.root_path}")
+        
+        # Delegate to infrastructure layer for loading
+        loader = BidsLoader(self.root_path)
+        self._dataset = loader.load()
+        
+        return self._dataset
     
     def get_dataset(self) -> Optional[BIDSDataset]:
         """
