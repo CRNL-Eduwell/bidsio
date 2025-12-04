@@ -306,6 +306,7 @@ class BidsLoader:
         
         # Scan for anat and ieeg directories (as requested)
         modality_dirs = ['anat', 'ieeg']
+        # TODO: add all modalities later (func, dwi, fmap, etc.)
         
         for modality in modality_dirs:
             modality_path = session_path / modality

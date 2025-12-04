@@ -136,4 +136,9 @@ See individual module files for specific implementation tasks.
 
 ## License
 
-TODO: Add license information
+**bidsio** is released under the **BSD-3-Clause License**.
+
+Copyright © 2025  
+Benjamin BONTEMPS
+
+This license allows unrestricted use, modification, and redistribution of the software, while prohibiting the use of the author's name for endorsement without permission. See the [`LICENSE`](https://raw.githubusercontent.com/CRNL-Eduwell/bidsio/master/LICENSE) file for details.

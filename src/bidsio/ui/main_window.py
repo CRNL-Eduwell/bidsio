@@ -11,9 +11,11 @@ from typing import Optional
 from collections import Counter
 
 from PySide6.QtWidgets import QMainWindow, QFileDialog, QMessageBox, QTreeWidgetItem
+from PySide6.QtGui import QAction
 from PySide6.QtCore import Slot, Qt
 
 from bidsio.infrastructure.logging_config import get_logger
+from bidsio.config.settings import get_settings_manager, get_settings
 from bidsio.core.repository import BidsRepository
 from bidsio.core.models import BIDSDataset, BIDSSubject, BIDSSession, BIDSFile, FilterCriteria
 from bidsio.ui.view_models import DatasetViewModel
@@ -74,11 +76,16 @@ class MainWindow(QMainWindow):
                 # Add our custom details panel
                 self.ui.detailsLayout.addWidget(self._details_panel)
             
+            # Apply window size from settings
+            settings = get_settings()
+            self.resize(settings.window_width, settings.window_height)
+
             # Set splitter sizes (60% tree, 40% details panel)
             if hasattr(self.ui, 'mainSplitter'):
-                # Total width of 1200 (from window size)
-                # 60% = 720, 40% = 480
-                self.ui.mainSplitter.setSizes([720, 480])
+                self.ui.mainSplitter.setSizes([int(settings.window_width * 0.6), int(settings.window_width * 0.4)])
+            
+            # Populate recent datasets menu
+            self._update_recent_menu()
             
             logger.debug("UI setup complete")
         except ImportError as e:
@@ -86,7 +93,8 @@ class MainWindow(QMainWindow):
             logger.error("Run 'python scripts/generate_ui.py' to generate UI files from .ui sources")
             # Fallback to basic window
             self.setWindowTitle("bidsio - BIDS Dataset Explorer")
-            self.resize(1200, 800)
+            settings = get_settings()
+            self.resize(settings.window_width, settings.window_height)
     
     def _connect_signals(self):
         """Connect signals and slots."""
@@ -112,6 +120,112 @@ class MainWindow(QMainWindow):
         # TODO: connect export action
         
         logger.debug("Signals connected")
+    
+    def _update_recent_menu(self):
+        """Update the recent datasets menu with current list."""
+        if not hasattr(self.ui, 'menuOpenRecent'):
+            return
+        
+        # Clear existing actions
+        self.ui.menuOpenRecent.clear()
+        
+        # Get recent datasets from settings
+        settings_manager = get_settings_manager()
+        settings = settings_manager.get()
+        recent_datasets = settings.recent_datasets
+        
+        if not recent_datasets:
+            # Add a disabled "No recent datasets" action
+            no_recent_action = QAction("No recent datasets", self)
+            no_recent_action.setEnabled(False)
+            self.ui.menuOpenRecent.addAction(no_recent_action)
+        else:
+            # Add action for each recent dataset
+            for dataset_path in recent_datasets:
+                action = QAction(dataset_path, self)
+                action.triggered.connect(lambda checked=False, path=dataset_path: self._load_recent_dataset(path))
+                self.ui.menuOpenRecent.addAction(action)
+            
+            # Add separator and "Clear Recent" action
+            self.ui.menuOpenRecent.addSeparator()
+            clear_action = QAction("Clear Recent Datasets", self)
+            clear_action.triggered.connect(self._clear_recent_datasets)
+            self.ui.menuOpenRecent.addAction(clear_action)
+        
+        logger.debug(f"Recent menu updated with {len(recent_datasets)} items")
+    
+    @Slot()
+    def _load_recent_dataset(self, dataset_path: str):
+        """
+        Load a dataset from the recent datasets list.
+        
+        Args:
+            dataset_path: Path to the dataset to load.
+        """
+        logger.info(f"Loading recent dataset: {dataset_path}")
+        
+        # Check if path exists
+        if not Path(dataset_path).exists():
+            QMessageBox.warning(
+                self,
+                "Dataset Not Found",
+                f"The dataset path no longer exists:\n{dataset_path}\n\n"
+                f"It will be removed from recent datasets."
+            )
+            # Remove from recent datasets
+            settings_manager = get_settings_manager()
+            settings = settings_manager.get()
+            if dataset_path in settings.recent_datasets:
+                settings.recent_datasets.remove(dataset_path)
+                settings_manager.save()
+                self._update_recent_menu()
+            return
+        
+        try:
+            # Create repository and load dataset
+            self._repository = BidsRepository(Path(dataset_path))
+            self._dataset = self._repository.load()
+            
+            # Update UI with loaded dataset
+            self._update_ui()
+            
+            # Show success message
+            num_subjects = len(self._dataset.subjects)
+            dataset_name = self._dataset.dataset_description.get('Name', 'Unknown')
+            
+            # Add to recent datasets (moves to top of list)
+            settings_manager = get_settings_manager()
+            settings_manager.add_recent_dataset(dataset_path)
+            self._update_recent_menu()
+            
+            logger.info(f"Dataset loaded successfully: {dataset_name}, {num_subjects} subjects")
+            
+        except Exception as e:
+            logger.error(f"Failed to load recent dataset: {e}", exc_info=True)
+            QMessageBox.critical(
+                self,
+                "Error",
+                f"Failed to load dataset:\n{str(e)}"
+            )
+    
+    @Slot()
+    def _clear_recent_datasets(self):
+        """Clear the recent datasets list."""
+        reply = QMessageBox.question(
+            self,
+            "Clear Recent Datasets",
+            "Are you sure you want to clear the recent datasets list?",
+            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+            QMessageBox.StandardButton.No
+        )
+        
+        if reply == QMessageBox.StandardButton.Yes:
+            settings_manager = get_settings_manager()
+            settings = settings_manager.get()
+            settings.recent_datasets.clear()
+            settings_manager.save()
+            self._update_recent_menu()
+            logger.info("Recent datasets cleared")
     
     @Slot()
     def load_dataset(self):
@@ -140,6 +254,11 @@ class MainWindow(QMainWindow):
                 # Show success message
                 num_subjects = len(self._dataset.subjects)
                 dataset_name = self._dataset.dataset_description.get('Name', 'Unknown')
+                
+                # Add to recent datasets
+                settings_manager = get_settings_manager()
+                settings_manager.add_recent_dataset(directory)
+                self._update_recent_menu()
                 
                 logger.info(f"Dataset loaded successfully: {dataset_name}, {num_subjects} subjects")
                 
@@ -727,11 +846,17 @@ class MainWindow(QMainWindow):
     
     def closeEvent(self, event):
         """Handle window close event."""
-        # TODO: save window geometry to settings
+        # Save window geometry to settings
+        settings_manager = get_settings_manager()
+        settings_manager.update(
+            window_width=self.width(),
+            window_height=self.height()
+        )
+        
         # TODO: prompt to save any unsaved work
         # TODO: cleanup resources
         
-        logger.info("Main window closing")
+        logger.info(f"Main window closing (size: {self.width()}x{self.height()})")
         event.accept()
 
 

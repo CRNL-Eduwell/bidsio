@@ -1,12 +1,36 @@
 """
 Application settings and configuration.
 
-This module provides centralized access to application settings.
+This module provides centralized access to application settings with automatic
+persistence to disk. Settings are stored as JSON in a platform-specific location:
+
+- Windows: %APPDATA%/LocalLow/bidsio/settings.json
+- macOS: ~/Library/Application Support/bidsio/settings.json
+- Linux: ~/.config/bidsio/settings.json
+
+Settings are automatically loaded on first access and saved when updated.
+
+Example:
+    from bidsio.config.settings import get_settings, get_settings_manager
+    
+    # Get current settings
+    settings = get_settings()
+    print(settings.theme)
+    
+    # Update settings (auto-saves)
+    manager = get_settings_manager()
+    manager.update(theme="light_blue", window_width=1400)
+    
+    # Add recent dataset (auto-saves)
+    manager.add_recent_dataset("/path/to/dataset")
 """
 
-from dataclasses import dataclass, field
+import json
+import platform
+import tempfile
+from dataclasses import dataclass, field, asdict
 from pathlib import Path
-from typing import Optional
+from typing import Optional, Any
 import logging
 
 
@@ -22,7 +46,7 @@ class AppSettings:
     # UI settings
     window_width: int = 1200
     window_height: int = 800
-    theme: str = "default"  # TODO: support custom themes
+    theme: str = "dark_blue"  # Available: dark_blue, dark_teal, dark_amber, light_blue, light_teal, light_amber
     
     # BIDS settings
     validate_bids_on_load: bool = True
@@ -45,6 +69,40 @@ class AppSettings:
     # TODO: add settings for export templates
 
 
+def get_persistent_data_directory() -> Path:
+    """
+    Get the persistent data directory for the application (cross-platform).
+    
+    Similar to Unity's persistentDataPath, this provides a location where
+    application data can be saved persistently across sessions.
+    
+    Returns:
+        Path to the persistent data directory.
+        
+    Platform-specific locations:
+        - Windows: %APPDATA%/LocalLow/bidsio
+        - macOS: ~/Library/Application Support/bidsio
+        - Linux: ~/.config/bidsio
+    """
+    system = platform.system()
+    app_name = "bidsio"
+    
+    if system == "Windows":
+        # Windows: %APPDATA%/LocalLow/bidsio
+        base = Path.home() / "AppData" / "LocalLow"
+    elif system == "Darwin":
+        # macOS: ~/Library/Application Support/bidsio
+        base = Path.home() / "Library" / "Application Support"
+    else:
+        # Linux/Unix: ~/.config/bidsio
+        base = Path.home() / ".config"
+    
+    data_dir = base / app_name
+    data_dir.mkdir(parents=True, exist_ok=True)
+    
+    return data_dir
+
+
 class SettingsManager:
     """
     Manages loading and saving application settings.
@@ -57,11 +115,13 @@ class SettingsManager:
         Args:
             config_file: Path to configuration file. If None, uses default location.
         """
+        if config_file is None:
+            data_dir = get_persistent_data_directory()
+            config_file = data_dir / "settings.json"
+        
         self.config_file = config_file
         self._settings = AppSettings()
-        
-        # TODO: determine default config file location if not provided
-        # TODO: load settings from file if it exists
+        self._logger = logging.getLogger(__name__)
     
     def load(self) -> AppSettings:
         """
@@ -70,10 +130,32 @@ class SettingsManager:
         Returns:
             The loaded settings object.
         """
-        # TODO: implement loading from JSON or TOML file
-        # TODO: handle missing file (use defaults)
-        # TODO: handle invalid/corrupted config file
-        # TODO: validate loaded settings
+        if not self.config_file.exists():
+            self._logger.info(f"Settings file not found at {self.config_file}, using defaults")
+            return self._settings
+        
+        try:
+            with open(self.config_file, 'r', encoding='utf-8') as f:
+                data = json.load(f)
+            
+            # Convert Path strings back to Path objects
+            if data.get('log_file_path'):
+                data['log_file_path'] = Path(data['log_file_path'])
+            if data.get('cache_directory'):
+                data['cache_directory'] = Path(data['cache_directory'])
+            
+            # Update settings with loaded data
+            for key, value in data.items():
+                if hasattr(self._settings, key):
+                    setattr(self._settings, key, value)
+            
+            self._logger.info(f"Settings loaded from {self.config_file}")
+            
+        except json.JSONDecodeError as e:
+            self._logger.error(f"Failed to parse settings file: {e}. Using defaults.")
+        except Exception as e:
+            self._logger.error(f"Failed to load settings: {e}. Using defaults.")
+        
         return self._settings
     
     def save(self, settings: Optional[AppSettings] = None) -> None:
@@ -86,11 +168,31 @@ class SettingsManager:
         if settings is not None:
             self._settings = settings
         
-        # TODO: implement saving to JSON or TOML file
-        # TODO: ensure config directory exists
-        # TODO: handle write errors gracefully
-        # TODO: consider atomic writes (write to temp, then rename)
-        pass
+        try:
+            # Ensure config directory exists
+            self.config_file.parent.mkdir(parents=True, exist_ok=True)
+            
+            # Convert dataclass to dict
+            data = asdict(self._settings)
+            
+            # Convert Path objects to strings for JSON serialization
+            if data.get('log_file_path'):
+                data['log_file_path'] = str(data['log_file_path'])
+            if data.get('cache_directory'):
+                data['cache_directory'] = str(data['cache_directory'])
+            
+            # Atomic write: write to temp file, then rename
+            temp_file = self.config_file.with_suffix('.tmp')
+            with open(temp_file, 'w', encoding='utf-8') as f:
+                json.dump(data, f, indent=2, ensure_ascii=False)
+            
+            # Replace old file with new file atomically
+            temp_file.replace(self.config_file)
+            
+            self._logger.info(f"Settings saved to {self.config_file}")
+            
+        except Exception as e:
+            self._logger.error(f"Failed to save settings: {e}")
     
     def get(self) -> AppSettings:
         """
@@ -103,7 +205,7 @@ class SettingsManager:
     
     def update(self, **kwargs) -> None:
         """
-        Update specific settings.
+        Update specific settings and auto-save.
         
         Args:
             **kwargs: Setting names and values to update.
@@ -111,9 +213,11 @@ class SettingsManager:
         for key, value in kwargs.items():
             if hasattr(self._settings, key):
                 setattr(self._settings, key, value)
+            else:
+                self._logger.warning(f"Ignoring unknown setting: {key}")
         
-        # TODO: validate updated settings
-        # TODO: optionally auto-save after update
+        # Auto-save after update
+        self.save()
     
     def add_recent_dataset(self, path: str) -> None:
         """
@@ -122,15 +226,24 @@ class SettingsManager:
         Args:
             path: Path to the dataset to add.
         """
-        # TODO: remove if already in list
-        # TODO: add to front of list
-        # TODO: trim to max_recent_items
-        # TODO: optionally auto-save
-        pass
+        # Remove if already in list
+        if path in self._settings.recent_datasets:
+            self._settings.recent_datasets.remove(path)
+        
+        # Add to front of list
+        self._settings.recent_datasets.insert(0, path)
+        
+        # Trim to max_recent_items
+        if len(self._settings.recent_datasets) > self._settings.max_recent_items:
+            self._settings.recent_datasets = self._settings.recent_datasets[:self._settings.max_recent_items]
+        
+        # Auto-save
+        self.save()
     
     def reset_to_defaults(self) -> None:
-        """Reset all settings to their default values."""
+        """Reset all settings to their default values and save."""
         self._settings = AppSettings()
+        self.save()
 
 
 # Global settings instance
@@ -164,3 +277,13 @@ def get_settings() -> AppSettings:
 # TODO: add validators for settings values
 # TODO: add migration logic for settings file format changes
 # TODO: consider using environment variables for some settings
+
+
+def get_settings_file_path() -> Path:
+    """
+    Get the path to the settings file.
+    
+    Returns:
+        Path to the settings.json file.
+    """
+    return get_persistent_data_directory() / "settings.json"

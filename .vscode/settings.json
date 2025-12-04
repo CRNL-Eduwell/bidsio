@@ -27,6 +27,4 @@
         "**/*.pyc": true,
         "**/.pytest_cache": true
     },
-    // TODO: Enable mypy or other type checkers as needed
-    // TODO: Configure code formatter (black, autopep8, etc.) if desired
 }

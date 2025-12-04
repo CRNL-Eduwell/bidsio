@@ -39,22 +39,21 @@ def main():
     
     logger.info("Starting bidsio application")
     
-    # TODO: set application metadata (name, organization, version)
-    # TODO: handle high DPI displays appropriately
-    
     # Create Qt application
     app = QApplication(sys.argv)
     app.setApplicationName("bidsio")
-    app.setOrganizationName("bidsio")
+    app.setOrganizationName("Eduwell")
     app.setApplicationVersion(__version__)
     
     # Set application icon
     app.setWindowIcon(QIcon(":/icon.png"))
     
-    # Apply Material Design theme for consistent cross-platform appearance
-    # Available themes: dark_teal.xml, dark_blue.xml, dark_amber.xml, 
-    #                   light_teal.xml, light_blue.xml, light_amber.xml, etc.
-    apply_stylesheet(app, theme='dark_blue.xml')
+    # Apply Material Design theme from settings
+    theme = settings.theme
+    if not theme.endswith('.xml'):
+        theme = f"{theme}.xml"
+    apply_stylesheet(app, theme=theme)
+    logger.info(f"Applied theme: {theme}")
     
     # Create and show main window
     window = MainWindow()

@@ -137,6 +137,12 @@
      <string>&amp;File</string>
     </property>
     <addaction name="actionLoadDataset"/>
+    <widget class="QMenu" name="menuOpenRecent">
+     <property name="title">
+      <string>Open &amp;Recent</string>
+     </property>
+    </widget>
+    <addaction name="menuOpenRecent"/>
     <addaction name="separator"/>
     <addaction name="actionClose"/>
    </widget>

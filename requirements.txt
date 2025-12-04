@@ -1,5 +1,4 @@
 # Python dependencies for bidsio
-# TODO: pin exact versions once the project is more stable.
 
 # GUI framework
 pyside6>=6.6.0
@@ -18,6 +17,3 @@ markdown>=3.5.0
 # Testing
 pytest>=7.4.0
 pytest-qt>=4.2.0
-
-# TODO: add optional dependencies (e.g. pandas) if needed for metadata handling.
-# TODO: consider adding black, flake8, mypy for code quality.
