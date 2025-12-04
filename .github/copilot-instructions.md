@@ -124,7 +124,7 @@ You are assisting in developing **bidsio**, a Python desktop application for exp
 **Dependencies**: Python standard library, pydantic, typing  
 **Forbidden**: Any GUI imports (PySide6, Qt)
 
-- `models.py`: Dataclasses for BIDS entities (BIDSFile, BIDSRun, BIDSSession, BIDSSubject, BIDSDataset, FilterCriteria, ExportRequest)
+- `models.py`: Dataclasses for BIDS entities (BIDSFile, BIDSSession, BIDSSubject, BIDSDataset, FilterCriteria, ExportRequest)
 - `repository.py`: Repository pattern for dataset access
 - `filters.py`: Functions for filtering datasets by criteria
 - `export.py`: Logic for exporting dataset subsets
@@ -227,12 +227,11 @@ def export_dataset(request: ExportRequest) -> Path:
 ### TODO Comments
 When implementing skeletons or placeholders, add detailed TODOs:
 ```python
-def _scan_files(self, session_path: Path) -> tuple[list[BIDSRun], list[BIDSFile]]:
+def _scan_files(self, session_path: Path) -> list[BIDSFile]:
     """Scan a session directory for BIDS files."""
     # TODO: scan modality directories (anat, func, dwi, fmap, etc.)
     # TODO: parse BIDS filenames to extract entities
-    # TODO: group files into runs based on entities
-    # TODO: identify session-level files vs run-level files
+    # TODO: run information is stored in file entities (e.g., {'run': '01'})
     raise NotImplementedError("_scan_files() is not implemented yet.")
 ```
 

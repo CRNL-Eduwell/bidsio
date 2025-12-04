@@ -15,7 +15,6 @@ from ..core.models import (
     BIDSDataset,
     BIDSSubject,
     BIDSSession,
-    BIDSRun,
     BIDSFile
 )
 from .logging_config import get_logger
@@ -240,7 +239,7 @@ class BidsLoader:
             subject_files = []
             if not sessions:
                 # Single-session dataset, scan subject directory directly
-                _, subject_files = self._scan_files(subject_dir)
+                subject_files = self._scan_files(subject_dir)
             
             # Create subject object
             subject = BIDSSubject(
@@ -279,12 +278,11 @@ class BidsLoader:
             logger.debug(f"  Scanning session: {session_id}")
             
             # Scan for files in this session
-            runs, session_files = self._scan_files(session_dir)
+            session_files = self._scan_files(session_dir)
             
             # Create session object
             session = BIDSSession(
                 session_id=session_id,
-                runs=runs,
                 files=session_files
             )
             
@@ -292,7 +290,7 @@ class BidsLoader:
         
         return sessions
     
-    def _scan_files(self, session_path: Path) -> tuple[list[BIDSRun], list[BIDSFile]]:
+    def _scan_files(self, session_path: Path) -> list[BIDSFile]:
         """
         Scan a session directory for BIDS files.
         
@@ -300,7 +298,7 @@ class BidsLoader:
             session_path: Path to the session (or subject if no sessions).
             
         Returns:
-            Tuple of (runs, session_level_files).
+            List of BIDSFile objects found in the session.
         """
         all_files = []
         
@@ -323,12 +321,8 @@ class BidsLoader:
                     bids_file = self._parse_bids_filename(filepath, modality)
                     all_files.append(bids_file)
         
-        # For now, we'll treat all files as session-level files
-        # In the future, we could group them into runs based on entities
-        runs = []
-        session_files = all_files
-        
-        return runs, session_files
+        # Run information is stored in file entities (e.g., {'run': '01'})
+        return all_files
     
     def _parse_bids_filename(self, filepath: Path, modality: str) -> BIDSFile:
         """

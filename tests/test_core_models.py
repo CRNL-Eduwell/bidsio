@@ -9,7 +9,6 @@ from pathlib import Path
 
 from src.bidsio.core.models import (
     BIDSFile,
-    BIDSRun,
     BIDSSession,
     BIDSSubject,
     BIDSDataset,

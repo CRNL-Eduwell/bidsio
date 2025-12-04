@@ -34,36 +34,16 @@ class BIDSFile:
 
 
 @dataclass
-class BIDSRun:
-    """Represents a single run within a BIDS session."""
-    
-    run_id: Optional[str] = None
-    """Run identifier (e.g., '01', '02'), if applicable."""
-    
-    task: Optional[str] = None
-    """Task name for functional runs."""
-    
-    files: list[BIDSFile] = field(default_factory=list)
-    """List of files associated with this run."""
-    
-    # TODO: add methods to retrieve files by modality or suffix
-    # TODO: consider grouping files by acquisition or reconstruction
-
-
-@dataclass
 class BIDSSession:
     """Represents a single session within a BIDS subject."""
     
     session_id: Optional[str] = None
     """Session identifier (e.g., '01', 'pre', 'post')."""
     
-    runs: list[BIDSRun] = field(default_factory=list)
-    """List of runs in this session."""
-    
     files: list[BIDSFile] = field(default_factory=list)
-    """Session-level files (e.g., anatomical scans not tied to a run)."""
+    """All files in this session (run info is in file entities)."""
     
-    # TODO: add methods to filter runs by task or modality
+    # TODO: add methods to filter files by task, modality, or run
     # TODO: consider session-level metadata
 
 

@@ -783,11 +783,12 @@ class MainWindow(QMainWindow):
             # Need to find parent subject to construct path
             # This is a bit tricky - we need to get the path from a file if available
             if data.files:
-                # Get parent directory from first file
-                folder_path = data.files[0].path.parent
-            elif data.runs and data.runs[0].files:
-                # Get parent directory from first run's first file
-                folder_path = data.runs[0].files[0].path.parent
+                # Get parent directory from first file (go up to session folder)
+                # Files are in modality folders, so we need to go up one more level
+                first_file_path = data.files[0].path
+                # Path structure: .../sub-XX/ses-YY/modality/file.nii.gz
+                # We want: .../sub-XX/ses-YY/
+                folder_path = first_file_path.parent.parent
         elif item_type == 'modality' and isinstance(data, dict):
             # For modality folders, get path from first file
             files = data.get('files', [])
