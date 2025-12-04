@@ -4,6 +4,8 @@ Main application window.
 This module defines the main window UI, which should be loaded from a .ui file.
 """
 
+import os
+import subprocess
 from pathlib import Path
 from typing import Optional
 from collections import Counter
@@ -16,6 +18,9 @@ from bidsio.core.repository import BidsRepository
 from bidsio.core.models import BIDSDataset, BIDSSubject, BIDSSession, BIDSFile, FilterCriteria
 from bidsio.ui.view_models import DatasetViewModel
 from bidsio.ui.about_dialog import AboutDialog
+from bidsio.ui.json_viewer_dialog import JsonViewerDialog
+from bidsio.ui.table_viewer_dialog import TableViewerDialog
+from bidsio.ui.text_viewer_dialog import TextViewerDialog
 from bidsio.ui.widgets.details_panel import DetailsPanel
 from bidsio.ui.widgets.delegates import CompactDelegate
 from bidsio.ui.forms.main_window_ui import Ui_MainWindow
@@ -98,8 +103,7 @@ class MainWindow(QMainWindow):
         # Connect tree widget selection
         if hasattr(self.ui, 'datasetTreeWidget'):
             self.ui.datasetTreeWidget.itemSelectionChanged.connect(self._on_tree_selection_changed)
-            # Use custom delegate to set compact row height
-            # Adjust the row_height parameter: 20 (very compact), 24 (compact), 28 (comfortable)
+            self.ui.datasetTreeWidget.itemDoubleClicked.connect(self._on_tree_item_double_clicked)
             self.ui.datasetTreeWidget.setItemDelegate(CompactDelegate(row_height=24, parent=self))
             self.ui.datasetTreeWidget.setUniformRowHeights(True)
         
@@ -239,6 +243,9 @@ class MainWindow(QMainWindow):
         for subject in self._dataset.subjects:
             self._add_subject_to_tree(root_item, subject)
         
+        # Add dataset-level files (README, LICENSE, CHANGES) after subjects
+        self._add_dataset_files_to_tree(root_item)
+        
         # Expand only the root
         root_item.setExpanded(True)
         
@@ -247,7 +254,7 @@ class MainWindow(QMainWindow):
     def _add_subject_to_tree(self, parent_item: QTreeWidgetItem, subject: BIDSSubject):
         """Add a subject and its contents to the tree."""
         # Create subject item
-        subject_text = f"👤 sub-{subject.subject_id}"
+        subject_text = f"🧍 sub-{subject.subject_id}"
         
         subject_item = QTreeWidgetItem([subject_text])
         subject_item.setData(0, Qt.ItemDataRole.UserRole, {'type': 'subject', 'data': subject})
@@ -301,6 +308,20 @@ class MainWindow(QMainWindow):
         file_item = QTreeWidgetItem([file_text])
         file_item.setData(0, Qt.ItemDataRole.UserRole, {'type': 'file', 'data': file})
         parent_item.addChild(file_item)
+    
+    def _add_dataset_files_to_tree(self, parent_item: QTreeWidgetItem):
+        """
+        Add dataset-level files (README, LICENSE, CHANGES) to the tree.
+        
+        Args:
+            parent_item: The dataset root item to add files to.
+        """
+        if not self._dataset:
+            return
+        
+        # Display dataset-level files that were loaded by the BidsLoader
+        for dataset_file in self._dataset.dataset_files:
+            self._add_file_to_tree(parent_item, dataset_file)
     
     def _update_status_bar(self):
         """Update the status bar with dataset statistics."""
@@ -358,6 +379,31 @@ class MainWindow(QMainWindow):
             self._display_file_details(data)
         else:
             self._details_panel.clear()
+    
+    @Slot(QTreeWidgetItem, int)
+    def _on_tree_item_double_clicked(self, item: QTreeWidgetItem, column: int):
+        """
+        Handle double-click on tree items.
+        
+        Opens files or folders based on their type:
+        - Folders: Open in OS file explorer
+        - JSON files: Open in custom JSON viewer
+        - CSV/TSV files: Open in custom table viewer
+        - Markdown/text files: Open in custom text viewer
+        - Other files: Open with default program
+        """
+        item_data = item.data(0, Qt.ItemDataRole.UserRole)
+        
+        if not item_data:
+            return
+        
+        item_type = item_data.get('type')
+        data = item_data.get('data')
+        
+        if item_type == 'file':
+            self._open_file(data)
+        elif item_type in ['dataset', 'subject', 'session', 'modality']:
+            self._open_folder(item_type, data)
     
     def _display_dataset_details(self, dataset: BIDSDataset):
         """Display dataset information in details panel."""
@@ -543,6 +589,141 @@ class MainWindow(QMainWindow):
         })
         
         self._details_panel.set_content(sections)
+    
+    def _open_file(self, file: BIDSFile):
+        """
+        Open a file based on its type.
+        
+        Args:
+            file: The BIDS file to open.
+        """
+        file_path = file.path
+        
+        if not file_path.exists():
+            logger.error(f"File not found: {file_path}")
+            QMessageBox.warning(
+                self,
+                "File Not Found",
+                f"The file does not exist:\n{file_path}"
+            )
+            return
+        
+        # Get file extension
+        extension = file_path.suffix.lower()
+        
+        try:
+            # JSON files - open in custom JSON viewer
+            if extension == '.json':
+                dialog = JsonViewerDialog(file_path, self)
+                dialog.exec()
+                logger.debug(f"Opened JSON file: {file_path.name}")
+            
+            # CSV/TSV files - open in custom table viewer
+            elif extension in ['.csv', '.tsv']:
+                dialog = TableViewerDialog(file_path, self)
+                dialog.exec()
+                logger.debug(f"Opened table file: {file_path.name}")
+            
+            # Markdown and text files - open in custom text viewer
+            # Also handle files without extension (README, CHANGES, LICENSE, etc.)
+            elif extension in ['.md', '.markdown', '.txt', '.rst'] or extension == '' or file_path.name.upper() in ['README', 'CHANGES', 'LICENSE', 'AUTHORS']:
+                dialog = TextViewerDialog(file_path, self)
+                dialog.exec()
+                logger.debug(f"Opened text file: {file_path.name}")
+            
+            # Other files - open with default program
+            else:
+                self._open_with_default_program(file_path)
+                
+        except Exception as e:
+            logger.error(f"Failed to open file: {e}", exc_info=True)
+            QMessageBox.critical(
+                self,
+                "Error",
+                f"Failed to open file:\n{str(e)}"
+            )
+    
+    def _open_folder(self, item_type: str, data):
+        """
+        Open a folder in the OS file explorer.
+        
+        Args:
+            item_type: Type of item (dataset, subject, session, modality).
+            data: Data associated with the item.
+        """
+        # Determine the folder path based on item type
+        folder_path = None
+        
+        if item_type == 'dataset' and isinstance(data, BIDSDataset):
+            folder_path = data.root_path
+        elif item_type == 'subject' and isinstance(data, BIDSSubject):
+            # Construct subject path from dataset root
+            if self._dataset:
+                folder_path = self._dataset.root_path / f"sub-{data.subject_id}"
+        elif item_type == 'session' and isinstance(data, BIDSSession):
+            # Need to find parent subject to construct path
+            # This is a bit tricky - we need to get the path from a file if available
+            if data.files:
+                # Get parent directory from first file
+                folder_path = data.files[0].path.parent
+            elif data.runs and data.runs[0].files:
+                # Get parent directory from first run's first file
+                folder_path = data.runs[0].files[0].path.parent
+        elif item_type == 'modality' and isinstance(data, dict):
+            # For modality folders, get path from first file
+            files = data.get('files', [])
+            if files:
+                # Get parent directory of first file (the modality folder)
+                folder_path = files[0].path.parent
+        
+        if not folder_path or not folder_path.exists():
+            logger.warning(f"Folder not found for {item_type}")
+            QMessageBox.warning(
+                self,
+                "Folder Not Found",
+                f"Cannot open folder for {item_type}"
+            )
+            return
+        
+        try:
+            # Open folder in OS file explorer
+            if os.name == 'nt':  # Windows
+                os.startfile(folder_path)
+            elif os.name == 'posix':  # macOS and Linux
+                subprocess.run(['xdg-open', str(folder_path)])
+            
+            logger.debug(f"Opened folder: {folder_path}")
+            
+        except Exception as e:
+            logger.error(f"Failed to open folder: {e}", exc_info=True)
+            QMessageBox.critical(
+                self,
+                "Error",
+                f"Failed to open folder:\n{str(e)}"
+            )
+    
+    def _open_with_default_program(self, file_path: Path):
+        """
+        Open a file with its default system program.
+        
+        Args:
+            file_path: Path to the file to open.
+        """
+        try:
+            if os.name == 'nt':  # Windows
+                os.startfile(file_path)
+            elif os.name == 'posix':  # macOS and Linux
+                subprocess.run(['xdg-open', str(file_path)])
+            
+            logger.debug(f"Opened with default program: {file_path.name}")
+            
+        except Exception as e:
+            logger.error(f"Failed to open with default program: {e}", exc_info=True)
+            QMessageBox.critical(
+                self,
+                "Error",
+                f"Failed to open file with default program:\n{str(e)}"
+            )
     
     def closeEvent(self, event):
         """Handle window close event."""

@@ -75,11 +75,16 @@ class BidsLoader:
         subjects = self._scan_subjects(participant_metadata)
         logger.info(f"Found {len(subjects)} subjects")
         
+        # Scan for dataset-level files
+        dataset_files = self._scan_dataset_files()
+        logger.debug(f"Found {len(dataset_files)} dataset-level files")
+        
         # Create dataset object
         dataset = BIDSDataset(
             root_path=self.root_path,
             subjects=subjects,
-            dataset_description=dataset_description
+            dataset_description=dataset_description,
+            dataset_files=dataset_files
         )
         
         return dataset
@@ -171,6 +176,35 @@ class BidsLoader:
         except Exception as e:
             logger.error(f"Failed to load participants.tsv: {e}")
             return {}
+    
+    def _scan_dataset_files(self) -> list[BIDSFile]:
+        """
+        Scan the dataset root for dataset-level files (README, LICENSE, CHANGES).
+        
+        Returns:
+            List of BIDSFile objects for dataset-level files.
+        """
+        dataset_files = []
+        
+        # List of common dataset-level files to look for
+        file_names = ['README', 'README.md', 'README.txt', 'LICENSE', 'CHANGES', 'CHANGES.md']
+        
+        for file_name in file_names:
+            file_path = self.root_path / file_name
+            
+            if file_path.exists() and file_path.is_file():
+                # Create a BIDSFile object for the dataset-level file
+                dataset_file = BIDSFile(
+                    path=file_path,
+                    modality=None,
+                    suffix=None,
+                    extension=file_path.suffix if file_path.suffix else None,
+                    entities={}
+                )
+                dataset_files.append(dataset_file)
+                logger.debug(f"Found dataset file: {file_name}")
+        
+        return dataset_files
     
     def _scan_subjects(self, participant_metadata: dict[str, dict[str, str]]) -> list[BIDSSubject]:
         """

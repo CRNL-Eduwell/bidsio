@@ -99,7 +99,9 @@ class BIDSDataset:
     dataset_description: dict = field(default_factory=dict)
     """Contents of dataset_description.json."""
     
-    # TODO: add properties for dataset-level files (README, CHANGES, participants.tsv)
+    dataset_files: list[BIDSFile] = field(default_factory=list)
+    """Dataset-level files (README, LICENSE, CHANGES, etc.)."""
+    
     # TODO: add methods to query subjects by ID
     # TODO: add method to get all unique tasks, modalities, sessions
     # TODO: consider caching for performance with large datasets
