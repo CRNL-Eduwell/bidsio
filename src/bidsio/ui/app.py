@@ -16,7 +16,9 @@ if __name__ == "__main__":
 from PySide6.QtWidgets import QApplication
 from PySide6.QtCore import Qt
 from PySide6.QtGui import QIcon
+from qt_material import apply_stylesheet
 
+from bidsio import __version__
 from bidsio.infrastructure.logging_config import setup_logging, get_logger
 from bidsio.config.settings import get_settings
 from bidsio.ui.main_window import MainWindow
@@ -44,12 +46,15 @@ def main():
     app = QApplication(sys.argv)
     app.setApplicationName("bidsio")
     app.setOrganizationName("bidsio")
-    app.setApplicationVersion("0.1.0")
+    app.setApplicationVersion(__version__)
     
     # Set application icon
     app.setWindowIcon(QIcon(":/icon.png"))
     
-    # TODO: apply theme/stylesheet if configured
+    # Apply Material Design theme for consistent cross-platform appearance
+    # Available themes: dark_teal.xml, dark_blue.xml, dark_amber.xml, 
+    #                   light_teal.xml, light_blue.xml, light_amber.xml, etc.
+    apply_stylesheet(app, theme='dark_blue.xml')
     
     # Create and show main window
     window = MainWindow()

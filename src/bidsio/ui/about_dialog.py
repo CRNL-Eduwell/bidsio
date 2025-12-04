@@ -6,6 +6,7 @@ This module provides a dialog displaying application information.
 
 from PySide6.QtWidgets import QDialog
 
+from bidsio import __version__
 from bidsio.infrastructure.logging_config import get_logger
 from bidsio.ui.forms.about_dialog_ui import Ui_AboutDialog
 
@@ -36,6 +37,11 @@ class AboutDialog(QDialog):
             
             self.ui = Ui_AboutDialog()
             self.ui.setupUi(self)
+            
+            # Set version dynamically from package version
+            self.ui.versionLabel.setText(
+                f'Version {__version__} - <a href="https://github.com/CRNL-Eduwell/bidsio">GitHub</a>'
+            )
             
             logger.debug("About dialog UI setup complete")
         except ImportError as e:

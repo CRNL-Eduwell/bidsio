@@ -39,7 +39,7 @@
    <item>
     <widget class="QLabel" name="versionLabel">
      <property name="text">
-      <string>Version 0.1.0 - &lt;a href=&quot;https://github.com/CRNL-Eduwell/bidsio&quot;&gt;&lt;span style=&quot; text-decoration: underline; color:#0000ff;&quot;&gt;GitHub&lt;/span&gt;&lt;/a&gt;</string>
+      <string>Version 0.1.0 - &lt;a href=&quot;https://github.com/CRNL-Eduwell/bidsio&quot;&gt;GitHub&lt;/a&gt;</string>
      </property>
      <property name="alignment">
       <set>Qt::AlignmentFlag::AlignCenter</set>
@@ -65,7 +65,7 @@
    <item>
     <widget class="QLabel" name="developerLabel">
      <property name="text">
-      <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Developed by &lt;a href=&quot;https://github.com/zigaroula&quot;&gt;&lt;span style=&quot; text-decoration: underline; color:#0000ff;&quot;&gt;Benjamin BONTEMPS&lt;/span&gt;&lt;/a&gt; using Python and PySide6.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+      <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Developed by &lt;a href=&quot;https://github.com/zigaroula&quot;&gt;Benjamin BONTEMPS&lt;/a&gt; using Python and PySide6.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
      </property>
      <property name="textFormat">
       <enum>Qt::TextFormat::RichText</enum>

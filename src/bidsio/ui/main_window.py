@@ -17,6 +17,7 @@ from bidsio.core.models import BIDSDataset, BIDSSubject, BIDSSession, BIDSFile, 
 from bidsio.ui.view_models import DatasetViewModel
 from bidsio.ui.about_dialog import AboutDialog
 from bidsio.ui.widgets.details_panel import DetailsPanel
+from bidsio.ui.widgets.delegates import CompactDelegate
 from bidsio.ui.forms.main_window_ui import Ui_MainWindow
 
 
@@ -97,6 +98,10 @@ class MainWindow(QMainWindow):
         # Connect tree widget selection
         if hasattr(self.ui, 'datasetTreeWidget'):
             self.ui.datasetTreeWidget.itemSelectionChanged.connect(self._on_tree_selection_changed)
+            # Use custom delegate to set compact row height
+            # Adjust the row_height parameter: 20 (very compact), 24 (compact), 28 (comfortable)
+            self.ui.datasetTreeWidget.setItemDelegate(CompactDelegate(row_height=24, parent=self))
+            self.ui.datasetTreeWidget.setUniformRowHeights(True)
         
         # TODO: connect toolbar buttons
         # TODO: connect filter controls
