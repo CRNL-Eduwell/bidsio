@@ -27,12 +27,45 @@ class BIDSFile:
     """File extension (e.g., '.nii.gz', '.json', '.tsv')."""
     
     entities: dict[str, str] = field(default_factory=dict)
-    """BIDS entities extracted from filename (e.g., {'task': 'rest', 'run': '01'})."""
+    """BIDS entities extracted from filename (e.g., {'task': 'rest', 'run': '01'})."""  
     
-    # TODO: add metadata property that loads associated JSON sidecar
+    metadata: Optional[dict] = None
+    """Metadata from associated JSON sidecar file (lazy loaded)."""
+    
     # TODO: add validation for BIDS compliance
-
-
+    
+    def load_metadata(self) -> Optional[dict]:
+        """
+        Load metadata from the associated JSON sidecar file.
+        
+        BIDS sidecar files have the same name as the data file but with .json extension.
+        For example, sub-01_T1w.nii.gz has sidecar sub-01_T1w.json
+        
+        Returns:
+            Dictionary of metadata if sidecar exists, None otherwise.
+        """
+        if self.metadata is not None:
+            return self.metadata
+        
+        # Don't load metadata for JSON files themselves
+        if self.extension == '.json':
+            return None
+        
+        # Construct JSON sidecar path
+        # Remove extensions like .nii.gz, .tsv, etc. and add .json
+        json_path = self.path.parent / (self.path.name.replace(self.extension or '', '') + '.json')
+        
+        if not json_path.exists():
+            return None
+        
+        try:
+            import json
+            with open(json_path, 'r', encoding='utf-8') as f:
+                self.metadata = json.load(f)
+                return self.metadata
+        except (json.JSONDecodeError, IOError) as e:
+            # Log error but don't fail - metadata is optional
+            return None
 @dataclass
 class BIDSSession:
     """Represents a single session within a BIDS subject."""

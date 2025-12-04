@@ -373,6 +373,9 @@ class BidsLoader:
             entities=entities
         )
         
+        # Load metadata from JSON sidecar if available
+        bids_file.load_metadata()
+        
         return bids_file
 
 

@@ -707,6 +707,25 @@ class MainWindow(QMainWindow):
             ]
         })
         
+        # Add metadata if present
+        if file.metadata:
+            metadata_items = []
+            for key, value in file.metadata.items():
+                # Convert value to string, handle different types
+                if isinstance(value, (list, dict)):
+                    value_str = str(value)
+                    # Truncate long values
+                    if len(value_str) > 100:
+                        value_str = value_str[:97] + '...'
+                else:
+                    value_str = str(value)
+                metadata_items.append({'key': key, 'value': value_str})
+            
+            sections.append({
+                'title': 'Metadata (from JSON sidecar)',
+                'items': metadata_items
+            })
+        
         self._details_panel.set_content(sections)
     
     def _open_file(self, file: BIDSFile):
