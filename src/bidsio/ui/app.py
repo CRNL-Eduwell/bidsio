@@ -51,15 +51,9 @@ def main():
     # Set application icon
     app.setWindowIcon(QIcon(":/icon.png"))
     
-    # Apply Material Design theme from settings
-    theme = settings.theme
-    if not theme.endswith('.xml'):
-        theme = f"{theme}.xml"
-    apply_stylesheet(app, theme=theme)
-    logger.info(f"Applied theme: {theme}")
-    
     # Create and show main window
     window = MainWindow()
+    window.apply_theme(settings.theme)
     window.show()
     
     logger.info("Main window displayed")

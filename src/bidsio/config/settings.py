@@ -233,6 +233,11 @@ def get_settings_manager() -> SettingsManager:
     if _settings_manager is None:
         _settings_manager = SettingsManager()
         _settings_manager.load()
+        
+        # Create settings file if it doesn't exist
+        if not _settings_manager.config_file.exists():
+            _settings_manager.save()
+    
     return _settings_manager
 
 

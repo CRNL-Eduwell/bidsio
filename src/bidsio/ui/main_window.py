@@ -10,9 +10,10 @@ from pathlib import Path
 from typing import Optional
 from collections import Counter
 
-from PySide6.QtWidgets import QMainWindow, QFileDialog, QMessageBox, QTreeWidgetItem
+from PySide6.QtWidgets import QMainWindow, QFileDialog, QMessageBox, QTreeWidgetItem, QApplication
 from PySide6.QtGui import QAction
 from PySide6.QtCore import Slot, Qt
+from qt_material import apply_stylesheet
 
 from bidsio.infrastructure.logging_config import get_logger
 from bidsio.config.settings import get_settings_manager, get_settings
@@ -20,6 +21,7 @@ from bidsio.core.repository import BidsRepository
 from bidsio.core.models import BIDSDataset, BIDSSubject, BIDSSession, BIDSFile, FilterCriteria
 from bidsio.ui.view_models import DatasetViewModel
 from bidsio.ui.about_dialog import AboutDialog
+from bidsio.ui.preferences_dialog import PreferencesDialog
 from bidsio.ui.json_viewer_dialog import JsonViewerDialog
 from bidsio.ui.table_viewer_dialog import TableViewerDialog
 from bidsio.ui.text_viewer_dialog import TextViewerDialog
@@ -109,6 +111,9 @@ class MainWindow(QMainWindow):
         
         if hasattr(self.ui, 'actionAbout'):
             self.ui.actionAbout.triggered.connect(self.show_about)
+        
+        if hasattr(self.ui, 'actionPreferences'):
+            self.ui.actionPreferences.triggered.connect(self.show_preferences)
         
         # Connect tree widget selection
         if hasattr(self.ui, 'datasetTreeWidget'):
@@ -366,12 +371,56 @@ class MainWindow(QMainWindow):
         dataset_name = dataset.dataset_description.get('Name', 'Unknown')
         logger.info(f"Dataset loaded successfully: {dataset_name}, {num_subjects} subjects")
     
+    def apply_theme(self, theme: str):
+        """
+        Apply the specified theme to the application.
+        
+        Args:
+            theme: Name of the theme to apply.
+        """
+        try:
+            app = QApplication.instance()
+            if not theme.endswith('.xml'):
+                theme = f"{theme}.xml"
+            
+            if app:
+                apply_stylesheet(app, theme=theme)
+                logger.info(f"Theme applied: {theme}")
+        except Exception as e:
+            logger.error(f"Failed to apply theme: {e}")
+
     @Slot()
     def show_about(self):
         """Show the About dialog."""
         dialog = AboutDialog(self)
         dialog.exec()
         logger.debug("About dialog shown")
+    
+    @Slot()
+    def show_preferences(self):
+        """Show the Preferences dialog."""
+        dialog = PreferencesDialog(self)
+        dialog.close_preferences_dialog.connect(self._on_preferences_dialog_closed)
+        dialog.preview_theme_changed.connect(self.apply_theme)
+        result = dialog.exec()
+        
+        if result:
+            logger.info("Preferences saved")
+            # Settings are automatically saved by the dialog
+        else:
+            logger.debug("Preferences dialog cancelled")
+    
+    @Slot()
+    def _on_preferences_dialog_closed(self):
+        """Handle preferences dialog closed signal."""
+        try:
+            app = QApplication.instance()
+            if app:
+                settings = get_settings()
+                self.apply_theme(settings.theme)
+                logger.info(f"Theme applied: {settings.theme}")
+        except Exception as e:
+            logger.error(f"Failed to apply theme: {e}")
     
     @Slot()
     def close_dataset(self):
