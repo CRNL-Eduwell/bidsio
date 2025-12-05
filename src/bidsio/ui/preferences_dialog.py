@@ -30,17 +30,20 @@ class PreferencesDialog(QDialog):
     close_preferences_dialog = Signal()
     preview_theme_changed = Signal(str)
     
-    # Theme name mappings
-    THEME_DISPLAY_TO_VALUE = {
-        "Dark Blue": "dark_blue",
-        "Dark Teal": "dark_teal",
-        "Dark Amber": "dark_amber",
-        "Light Blue": "light_blue",
-        "Light Teal": "light_teal",
-        "Light Amber": "light_amber",
+    # Color name mappings
+    COLOR_DISPLAY_TO_VALUE = {
+        "Blue": "blue",
+        "Amber": "amber",
+        "Cyan": "cyan",
+        "Light Green": "lightgreen",
+        "Pink": "pink",
+        "Purple": "purple",
+        "Red": "red",
+        "Teal": "teal",
+        "Yellow": "yellow",
     }
     
-    THEME_VALUE_TO_DISPLAY = {v: k for k, v in THEME_DISPLAY_TO_VALUE.items()}
+    COLOR_VALUE_TO_DISPLAY = {v: k for k, v in COLOR_DISPLAY_TO_VALUE.items()}
     
     # Log level mappings
     LOG_LEVEL_DISPLAY_TO_VALUE = {
@@ -83,7 +86,8 @@ class PreferencesDialog(QDialog):
         self.ui.btnResetDefaults.clicked.connect(self._on_reset_defaults)
         self.ui.btnBrowseLogFile.clicked.connect(self._on_browse_log_file)
         self.ui.checkLogToFile.toggled.connect(self._on_log_to_file_toggled)
-        self.ui.comboTheme.currentTextChanged.connect(self._on_theme_changed)
+        self.ui.radioDark.toggled.connect(self._on_theme_settings_changed) # Only connect one radio button to avoid duplicate calls
+        self.ui.comboPrimaryColor.currentTextChanged.connect(self._on_theme_settings_changed)
     
     def _load_settings(self):
         """Load current settings into the UI."""
@@ -104,9 +108,20 @@ class PreferencesDialog(QDialog):
         # Enable/disable log file path based on log_to_file
         self._on_log_to_file_toggled(settings.log_to_file)
         
-        # UI settings
-        theme_display = self.THEME_VALUE_TO_DISPLAY.get(settings.theme, "Dark Blue")
-        self.ui.comboTheme.setCurrentText(theme_display)
+        # UI settings - parse theme into mode and color
+        theme = settings.theme
+        if theme.startswith("dark_"):
+            self.ui.radioDark.setChecked(True)
+            color = theme[5:]  # Remove "dark_" prefix
+        elif theme.startswith("light_"):
+            self.ui.radioLight.setChecked(True)
+            color = theme[6:]  # Remove "light_" prefix
+        else:
+            self.ui.radioDark.setChecked(True)
+            color = "blue"
+        
+        color_display = self.COLOR_VALUE_TO_DISPLAY.get(color, "Blue")
+        self.ui.comboPrimaryColor.setCurrentText(color_display)
         
         # BIDS settings
         self.ui.checkLazyLoading.setChecked(settings.lazy_loading)
@@ -124,9 +139,11 @@ class PreferencesDialog(QDialog):
         log_to_file = self.ui.checkLogToFile.isChecked()
         log_file_path = Path(self.ui.editLogFilePath.text()) if self.ui.editLogFilePath.text() else None
         
-        # Get theme
-        theme_display = self.ui.comboTheme.currentText()
-        theme = self.THEME_DISPLAY_TO_VALUE.get(theme_display, "dark_blue")
+        # Get theme - construct from mode and color
+        mode = "dark" if self.ui.radioDark.isChecked() else "light"
+        color_display = self.ui.comboPrimaryColor.currentText()
+        color = self.COLOR_DISPLAY_TO_VALUE.get(color_display, "blue")
+        theme = f"{mode}_{color}"
         
         # Get BIDS settings
         lazy_loading = self.ui.checkLazyLoading.isChecked()
@@ -219,8 +236,11 @@ class PreferencesDialog(QDialog):
         self.ui.btnBrowseLogFile.setEnabled(checked)
         self.ui.labelLogFilePath.setEnabled(checked)
 
-    @Slot(str)
-    def _on_theme_changed(self, theme_display: str):
-        """Handle theme selection change."""
-        theme = self.THEME_DISPLAY_TO_VALUE.get(theme_display, "dark_blue")
+    @Slot()
+    def _on_theme_settings_changed(self):
+        """Handle theme mode or color change."""
+        mode = "dark" if self.ui.radioDark.isChecked() else "light"
+        color_display = self.ui.comboPrimaryColor.currentText()
+        color = self.COLOR_DISPLAY_TO_VALUE.get(color_display, "blue")
+        theme = f"{mode}_{color}"
         self.preview_theme_changed.emit(theme)

@@ -165,7 +165,7 @@
           <set>Qt::AlignmentFlag::AlignLeading|Qt::AlignmentFlag::AlignLeft|Qt::AlignmentFlag::AlignTop</set>
          </property>
          <item row="0" column="0">
-          <widget class="QLabel" name="labelTheme">
+          <widget class="QLabel" name="labelThemeMode">
            <property name="sizePolicy">
             <sizepolicy hsizetype="Preferred" vsizetype="MinimumExpanding">
              <horstretch>0</horstretch>
@@ -173,7 +173,7 @@
             </sizepolicy>
            </property>
            <property name="text">
-            <string>Theme:</string>
+            <string>Theme Mode:</string>
            </property>
            <property name="alignment">
             <set>Qt::AlignmentFlag::AlignLeading|Qt::AlignmentFlag::AlignLeft|Qt::AlignmentFlag::AlignVCenter</set>
@@ -181,35 +181,100 @@
           </widget>
          </item>
          <item row="0" column="1">
-          <widget class="QComboBox" name="comboTheme">
+          <layout class="QHBoxLayout" name="horizontalLayout_3">
+           <item>
+            <widget class="QRadioButton" name="radioDark">
+             <property name="text">
+              <string>Dark</string>
+             </property>
+             <property name="checked">
+              <bool>true</bool>
+             </property>
+            </widget>
+           </item>
+           <item>
+            <widget class="QRadioButton" name="radioLight">
+             <property name="text">
+              <string>Light</string>
+             </property>
+            </widget>
+           </item>
+           <item>
+            <spacer name="horizontalSpacer_2">
+             <property name="orientation">
+              <enum>Qt::Horizontal</enum>
+             </property>
+             <property name="sizeHint" stdset="0">
+              <size>
+               <width>40</width>
+               <height>20</height>
+              </size>
+             </property>
+            </spacer>
+           </item>
+          </layout>
+         </item>
+         <item row="1" column="0">
+          <widget class="QLabel" name="labelPrimaryColor">
+           <property name="sizePolicy">
+            <sizepolicy hsizetype="Preferred" vsizetype="MinimumExpanding">
+             <horstretch>0</horstretch>
+             <verstretch>0</verstretch>
+            </sizepolicy>
+           </property>
+           <property name="text">
+            <string>Primary Color:</string>
+           </property>
+           <property name="alignment">
+            <set>Qt::AlignmentFlag::AlignLeading|Qt::AlignmentFlag::AlignLeft|Qt::AlignmentFlag::AlignVCenter</set>
+           </property>
+          </widget>
+         </item>
+         <item row="1" column="1">
+          <widget class="QComboBox" name="comboPrimaryColor">
            <item>
             <property name="text">
-             <string>Dark Blue</string>
+             <string>Blue</string>
             </property>
            </item>
            <item>
             <property name="text">
-             <string>Dark Teal</string>
+             <string>Amber</string>
             </property>
            </item>
            <item>
             <property name="text">
-             <string>Dark Amber</string>
+             <string>Cyan</string>
             </property>
            </item>
            <item>
             <property name="text">
-             <string>Light Blue</string>
+             <string>Light Green</string>
             </property>
            </item>
            <item>
             <property name="text">
-             <string>Light Teal</string>
+             <string>Pink</string>
             </property>
            </item>
            <item>
             <property name="text">
-             <string>Light Amber</string>
+             <string>Purple</string>
+            </property>
+           </item>
+           <item>
+            <property name="text">
+             <string>Red</string>
+            </property>
+           </item>
+           <item>
+            <property name="text">
+             <string>Teal</string>
+            </property>
+           </item>
+           <item>
+            <property name="text">
+             <string>Yellow</string>
             </property>
            </item>
           </widget>

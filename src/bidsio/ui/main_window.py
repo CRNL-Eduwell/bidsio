@@ -13,6 +13,7 @@ from collections import Counter
 from PySide6.QtWidgets import QMainWindow, QFileDialog, QMessageBox, QTreeWidgetItem, QApplication
 from PySide6.QtGui import QAction
 from PySide6.QtCore import Slot, Qt
+from numpy import invert
 from qt_material import apply_stylesheet
 
 from bidsio.infrastructure.logging_config import get_logger
@@ -383,8 +384,10 @@ class MainWindow(QMainWindow):
             if not theme.endswith('.xml'):
                 theme = f"{theme}.xml"
             
+            invert_secondary = theme.startswith('light_')
+            
             if app:
-                apply_stylesheet(app, theme=theme)
+                apply_stylesheet(app, theme=theme, invert_secondary=invert_secondary)
                 logger.info(f"Theme applied: {theme}")
         except Exception as e:
             logger.error(f"Failed to apply theme: {e}")

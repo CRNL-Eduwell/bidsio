@@ -14,9 +14,7 @@ if __name__ == "__main__":
         sys.path.insert(0, str(src_path))
 
 from PySide6.QtWidgets import QApplication
-from PySide6.QtCore import Qt
 from PySide6.QtGui import QIcon
-from qt_material import apply_stylesheet
 
 from bidsio import __version__
 from bidsio.infrastructure.logging_config import setup_logging, get_logger
