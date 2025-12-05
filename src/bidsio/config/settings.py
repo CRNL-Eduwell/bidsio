@@ -196,7 +196,7 @@ class SettingsManager:
             path: Path to the dataset to add.
         """
         # Normalize path to use forward slashes
-        normalized_path = str(Path(path)).replace('\\\\', '/')
+        normalized_path = str(Path(path)).replace('\\', '/')
         
         # Remove if already in list
         if normalized_path in self._settings.recent_datasets:

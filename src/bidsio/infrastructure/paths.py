@@ -22,22 +22,6 @@ def get_application_dir() -> Path:
     return Path(__file__).parent.parent.parent.parent
 
 
-def get_cache_dir() -> Path:
-    """
-    Get the directory for caching temporary data.
-    
-    Returns:
-        Path to cache directory.
-    """
-    # TODO: use platform-appropriate cache locations
-    # TODO: implement cache cleanup strategy
-    # TODO: create directory if it doesn't exist
-    
-    cache_dir = get_application_dir() / ".cache"
-    cache_dir.mkdir(exist_ok=True)
-    return cache_dir
-
-
 def ensure_directory(path: Path) -> Path:
     """
     Ensure a directory exists, creating it if necessary.

@@ -20,7 +20,6 @@ from bidsio.infrastructure.logging_config import get_logger
 from bidsio.config.settings import get_settings_manager, get_settings
 from bidsio.core.repository import BidsRepository
 from bidsio.core.models import BIDSDataset, BIDSSubject, BIDSSession, BIDSFile, FilterCriteria
-from bidsio.ui.view_models import DatasetViewModel
 from bidsio.ui.about_dialog import AboutDialog
 from bidsio.ui.preferences_dialog import PreferencesDialog
 from bidsio.ui.json_viewer_dialog import JsonViewerDialog
@@ -50,7 +49,6 @@ class MainWindow(QMainWindow):
         
         self._repository: Optional[BidsRepository] = None
         self._dataset: Optional[BIDSDataset] = None
-        self._view_model: Optional[DatasetViewModel] = None
         self._details_panel: Optional[DetailsPanel] = None
         
         self._setup_ui()
@@ -424,16 +422,6 @@ class MainWindow(QMainWindow):
                 logger.info(f"Theme applied: {settings.theme}")
         except Exception as e:
             logger.error(f"Failed to apply theme: {e}")
-    
-    @Slot()
-    def close_dataset(self):
-        """Close the currently open dataset."""
-        # TODO: clear current dataset
-        # TODO: reset UI to empty state
-        # TODO: clear view model
-        
-        logger.info("Closing dataset")
-        pass
     
     @Slot()
     def apply_filters(self):
@@ -1102,9 +1090,7 @@ class MainWindow(QMainWindow):
             window_width=self.width(),
             window_height=self.height()
         )
-        
-        # TODO: prompt to save any unsaved work
-        # TODO: cleanup resources
+        settings_manager.save()
         
         logger.info(f"Main window closing (size: {self.width()}x{self.height()})")
         event.accept()
@@ -1114,4 +1100,3 @@ class MainWindow(QMainWindow):
 # - Export configuration dialog
 # - Filter configuration dialog
 # - Dataset information dialog
-# - About dialog

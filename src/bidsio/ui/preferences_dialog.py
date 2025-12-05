@@ -10,7 +10,6 @@ from typing import Optional
 
 from PySide6.QtWidgets import QDialog, QFileDialog, QMessageBox
 from PySide6.QtCore import Slot, Signal
-from PySide6.QtWidgets import QMessageBox as QB
 
 from bidsio.config.settings import get_settings_manager, get_settings, AppSettings
 from bidsio.infrastructure.logging_config import get_logger
@@ -190,11 +189,11 @@ class PreferencesDialog(QDialog):
             self,
             "Reset to Defaults",
             "Are you sure you want to reset all settings to their default values?",
-            QB.StandardButton.Yes | QB.StandardButton.No,
-            QB.StandardButton.No
+            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+            QMessageBox.StandardButton.No
         )
         
-        if reply == QB.StandardButton.Yes:
+        if reply == QMessageBox.StandardButton.Yes:
             # Reset to defaults
             self._settings_manager.reset_to_defaults()
             

@@ -57,7 +57,6 @@ def main():
     logger.info("Main window displayed")
     
     # TODO: handle command-line arguments (e.g., open dataset path)
-    # TODO: restore window geometry from settings
     
     # Run event loop
     exit_code = app.exec()

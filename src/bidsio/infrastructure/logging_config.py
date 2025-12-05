@@ -112,7 +112,3 @@ def get_logger(name: str) -> logging.Logger:
         A configured logger instance.
     """
     return logging.getLogger(name)
-
-
-# TODO: add context manager for temporary log level changes
-# TODO: add function to capture logs for testing
