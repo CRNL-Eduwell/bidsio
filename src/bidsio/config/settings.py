@@ -52,6 +52,7 @@ class AppSettings:
     validate_bids_on_load: bool = True
     cache_dataset_index: bool = True
     cache_directory: Optional[Path] = None
+    lazy_loading: bool = False  # False = eager loading (default), True = lazy loading
     
     # Export settings
     default_copy_mode: str = "copy"  # 'copy', 'symlink', or 'hardlink'

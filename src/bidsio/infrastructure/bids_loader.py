@@ -30,14 +30,62 @@ class BidsLoader:
     parsing BIDS filenames, and building the dataset model.
     """
     
-    def __init__(self, root_path: Path):
+    def __init__(self, root_path: Path, progress_callback=None):
         """
         Initialize the loader with a dataset root path.
         
         Args:
             root_path: Path to the root directory of a BIDS dataset.
+            progress_callback: Optional callback function(current, total, message) for progress updates.
         """
         self.root_path = Path(root_path)
+        self.progress_callback = progress_callback
+    
+    def load_lazy(self) -> BIDSDataset:
+        """
+        Load only the basic dataset structure without scanning subjects.
+        
+        This is a fast operation that only reads dataset_description.json and
+        identifies subject directories without loading their contents.
+        
+        Returns:
+            A BIDSDataset with empty subject list (subjects can be loaded on-demand).
+            
+        Raises:
+            FileNotFoundError: If root_path does not exist.
+            ValueError: If the directory is not a valid BIDS dataset.
+        """
+        logger.info(f"Lazy loading BIDS dataset from: {self.root_path}")
+        
+        # Validate that root_path exists
+        if not self.root_path.exists():
+            raise FileNotFoundError(f"Dataset path does not exist: {self.root_path}")
+        
+        if not self.root_path.is_dir():
+            raise ValueError(f"Path is not a directory: {self.root_path}")
+        
+        # Validate BIDS structure
+        if not self._validate_bids_root():
+            raise ValueError(f"Directory is not a valid BIDS dataset: {self.root_path}")
+        
+        # Load dataset description
+        dataset_description = self._load_dataset_description()
+        logger.debug(f"Dataset: {dataset_description.get('Name', 'Unknown')}")
+        
+        # Scan for dataset-level files
+        dataset_files = self._scan_dataset_files()
+        logger.debug(f"Found {len(dataset_files)} dataset-level files")
+        
+        # Create dataset object with empty subjects (will be loaded on-demand)
+        dataset = BIDSDataset(
+            root_path=self.root_path,
+            subjects=[],
+            dataset_description=dataset_description,
+            dataset_files=dataset_files
+        )
+        
+        logger.info("Lazy load complete - subjects not loaded yet")
+        return dataset
     
     def load(self) -> BIDSDataset:
         """
@@ -205,6 +253,64 @@ class BidsLoader:
         
         return dataset_files
     
+    def load_subject(self, subject_id: str) -> Optional[BIDSSubject]:
+        """
+        Load a single subject's data on-demand.
+        
+        Args:
+            subject_id: The subject identifier (without 'sub-' prefix).
+            
+        Returns:
+            BIDSSubject object if found, None otherwise.
+        """
+        subject_dir = self.root_path / f"sub-{subject_id}"
+        
+        if not subject_dir.exists() or not subject_dir.is_dir():
+            logger.warning(f"Subject directory not found: {subject_dir}")
+            return None
+        
+        logger.debug(f"Loading subject on-demand: {subject_id}")
+        
+        # Load participant metadata
+        participant_metadata = self._load_participants_tsv()
+        metadata = participant_metadata.get(subject_id, {})
+        
+        # Scan for sessions
+        sessions = self._scan_sessions(subject_dir)
+        
+        # If no sessions, scan the subject directory directly for files
+        subject_files = []
+        if not sessions:
+            # Single-session dataset, scan subject directory directly
+            subject_files = self._scan_files(subject_dir)
+        
+        # Create subject object
+        subject = BIDSSubject(
+            subject_id=subject_id,
+            sessions=sessions,
+            files=subject_files,
+            metadata=metadata
+        )
+        
+        return subject
+    
+    def get_subject_ids(self) -> list[str]:
+        """
+        Get a list of all subject IDs in the dataset without loading their data.
+        
+        Returns:
+            List of subject IDs (without 'sub-' prefix).
+        """
+        subject_dirs = sorted(self.root_path.glob('sub-*'))
+        subject_ids = []
+        
+        for subject_dir in subject_dirs:
+            if subject_dir.is_dir():
+                subject_id = subject_dir.name.replace('sub-', '')
+                subject_ids.append(subject_id)
+        
+        return subject_ids
+    
     def _scan_subjects(self, participant_metadata: dict[str, dict[str, str]]) -> list[BIDSSubject]:
         """
         Scan the dataset root for subject directories.
@@ -219,8 +325,9 @@ class BidsLoader:
         
         # Find all directories matching pattern 'sub-*'
         subject_dirs = sorted(self.root_path.glob('sub-*'))
+        total_subjects = len(subject_dirs)
         
-        for subject_dir in subject_dirs:
+        for idx, subject_dir in enumerate(subject_dirs):
             if not subject_dir.is_dir():
                 continue
             
@@ -228,6 +335,10 @@ class BidsLoader:
             subject_id = subject_dir.name.replace('sub-', '')
             
             logger.debug(f"Scanning subject: {subject_id}")
+            
+            # Report progress
+            if self.progress_callback:
+                self.progress_callback(idx + 1, total_subjects, f"Loading subject: {subject_id}")
             
             # Get metadata for this subject
             metadata = participant_metadata.get(subject_id, {})

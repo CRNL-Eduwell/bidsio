@@ -23,6 +23,8 @@ from bidsio.ui.about_dialog import AboutDialog
 from bidsio.ui.json_viewer_dialog import JsonViewerDialog
 from bidsio.ui.table_viewer_dialog import TableViewerDialog
 from bidsio.ui.text_viewer_dialog import TextViewerDialog
+from bidsio.ui.progress_dialog import ProgressDialog
+from bidsio.ui.workers import DatasetLoaderThread
 from bidsio.ui.widgets.details_panel import DetailsPanel
 from bidsio.ui.widgets.delegates import CompactDelegate
 from bidsio.ui.forms.main_window_ui import Ui_MainWindow
@@ -181,32 +183,8 @@ class MainWindow(QMainWindow):
                 self._update_recent_menu()
             return
         
-        try:
-            # Create repository and load dataset
-            self._repository = BidsRepository(Path(dataset_path))
-            self._dataset = self._repository.load()
-            
-            # Update UI with loaded dataset
-            self._update_ui()
-            
-            # Show success message
-            num_subjects = len(self._dataset.subjects)
-            dataset_name = self._dataset.dataset_description.get('Name', 'Unknown')
-            
-            # Add to recent datasets (moves to top of list)
-            settings_manager = get_settings_manager()
-            settings_manager.add_recent_dataset(dataset_path)
-            self._update_recent_menu()
-            
-            logger.info(f"Dataset loaded successfully: {dataset_name}, {num_subjects} subjects")
-            
-        except Exception as e:
-            logger.error(f"Failed to load recent dataset: {e}", exc_info=True)
-            QMessageBox.critical(
-                self,
-                "Error",
-                f"Failed to load dataset:\n{str(e)}"
-            )
+        # Start loading with progress dialog
+        self._start_dataset_loading(Path(dataset_path))
     
     @Slot()
     def _clear_recent_datasets(self):
@@ -243,47 +221,150 @@ class MainWindow(QMainWindow):
         
         if directory:
             logger.info(f"Loading dataset from: {directory}")
-            try:
-                # Create repository and load dataset
-                self._repository = BidsRepository(Path(directory))
+            self._start_dataset_loading(Path(directory))
+    
+    def _start_dataset_loading(self, dataset_path: Path):
+        """
+        Start loading a dataset with progress dialog.
+        
+        This method creates a repository, validates the path, and starts
+        the loading operation in a background thread with a progress dialog.
+        
+        Args:
+            dataset_path: Path to the BIDS dataset to load.
+        """
+        try:
+            # Create repository (this validates the path)
+            self._repository = BidsRepository(dataset_path)
+            
+            # Check if lazy loading is enabled
+            settings = get_settings()
+            if settings.lazy_loading:
+                # Lazy loading: load immediately in main thread (will be fast)
                 self._dataset = self._repository.load()
-                
-                # Update UI with loaded dataset
-                self._update_ui()
-                
-                # Show success message
-                num_subjects = len(self._dataset.subjects)
-                dataset_name = self._dataset.dataset_description.get('Name', 'Unknown')
+                self._on_dataset_loaded(self._dataset)
                 
                 # Add to recent datasets
                 settings_manager = get_settings_manager()
-                settings_manager.add_recent_dataset(directory)
+                settings_manager.add_recent_dataset(str(dataset_path))
                 self._update_recent_menu()
+            else:
+                # Eager loading: load in background thread with progress dialog
+                self._start_threaded_loading(dataset_path)
                 
-                logger.info(f"Dataset loaded successfully: {dataset_name}, {num_subjects} subjects")
-                
-            except FileNotFoundError as e:
-                logger.error(f"Dataset path not found: {e}")
-                QMessageBox.critical(
-                    self,
-                    "Error",
-                    f"Dataset path not found:\n{str(e)}"
-                )
-            except ValueError as e:
-                logger.error(f"Invalid BIDS dataset: {e}")
-                QMessageBox.critical(
-                    self,
-                    "Error",
-                    f"Invalid BIDS dataset:\n{str(e)}\n\n"
-                    f"Make sure the directory contains a dataset_description.json file."
-                )
-            except Exception as e:
-                logger.error(f"Failed to load dataset: {e}", exc_info=True)
-                QMessageBox.critical(
-                    self,
-                    "Error",
-                    f"Failed to load dataset:\n{str(e)}"
-                )
+        except FileNotFoundError as e:
+            logger.error(f"Dataset path not found: {e}")
+            QMessageBox.critical(
+                self,
+                "Error",
+                f"Dataset path not found:\n{str(e)}"
+            )
+        except ValueError as e:
+            logger.error(f"Invalid BIDS dataset: {e}")
+            QMessageBox.critical(
+                self,
+                "Error",
+                f"Invalid BIDS dataset:\n{str(e)}\n\n"
+                f"Make sure the directory contains a dataset_description.json file."
+            )
+        except Exception as e:
+            logger.error(f"Failed to initialize dataset loading: {e}", exc_info=True)
+            QMessageBox.critical(
+                self,
+                "Error",
+                f"Failed to load dataset:\n{str(e)}"
+            )
+    
+    def _start_threaded_loading(self, dataset_path: Path):
+        """
+        Start loading dataset in a background thread with progress dialog.
+        
+        Args:
+            dataset_path: Path to the BIDS dataset to load.
+        """
+        # Ensure repository exists
+        if self._repository is None:
+            raise ValueError("Repository not initialized")
+        
+        # Create progress dialog
+        progress_dialog = ProgressDialog(self)
+        progress_dialog.setWindowTitle("Loading Dataset")
+        
+        # Create loader thread
+        loader_thread = DatasetLoaderThread(self._repository, self)
+        
+        # Connect signals
+        loader_thread.progress_updated.connect(progress_dialog.update_progress)
+        loader_thread.loading_complete.connect(
+            lambda dataset: self._on_threaded_loading_complete(dataset, dataset_path, progress_dialog)
+        )
+        loader_thread.loading_error.connect(
+            lambda error: self._on_threaded_loading_error(error, progress_dialog)
+        )
+        
+        # Start loading
+        loader_thread.start()
+        
+        # Show progress dialog (blocks until loading completes)
+        progress_dialog.exec()
+    
+    def _on_threaded_loading_complete(self, dataset: BIDSDataset, dataset_path: Path, progress_dialog: ProgressDialog):
+        """
+        Handle successful completion of threaded dataset loading.
+        
+        Args:
+            dataset: The loaded dataset.
+            dataset_path: Path to the dataset.
+            progress_dialog: The progress dialog to close.
+        """
+        self._dataset = dataset
+        
+        # Close progress dialog
+        progress_dialog.complete()
+        
+        # Update UI with loaded dataset
+        self._on_dataset_loaded(dataset)
+        
+        # Add to recent datasets
+        settings_manager = get_settings_manager()
+        settings_manager.add_recent_dataset(str(dataset_path))
+        self._update_recent_menu()
+        
+        logger.info(f"Dataset loaded successfully in thread")
+    
+    def _on_threaded_loading_error(self, error: Exception, progress_dialog: ProgressDialog):
+        """
+        Handle error during threaded dataset loading.
+        
+        Args:
+            error: The exception that occurred.
+            progress_dialog: The progress dialog to close.
+        """
+        # Close progress dialog
+        progress_dialog.reject()
+        
+        # Show error message
+        logger.error(f"Failed to load dataset in thread: {error}", exc_info=True)
+        QMessageBox.critical(
+            self,
+            "Error",
+            f"Failed to load dataset:\n{str(error)}"
+        )
+    
+    def _on_dataset_loaded(self, dataset: BIDSDataset):
+        """
+        Handle successful dataset loading (common for both lazy and eager loading).
+        
+        Args:
+            dataset: The loaded dataset.
+        """
+        # Update UI with loaded dataset
+        self._update_ui()
+        
+        # Show success message
+        num_subjects = len(dataset.subjects)
+        dataset_name = dataset.dataset_description.get('Name', 'Unknown')
+        logger.info(f"Dataset loaded successfully: {dataset_name}, {num_subjects} subjects")
     
     @Slot()
     def show_about(self):
@@ -346,7 +427,7 @@ class MainWindow(QMainWindow):
     
     def _populate_tree(self):
         """Populate the tree widget with dataset structure."""
-        if not hasattr(self.ui, 'datasetTreeWidget') or not self._dataset:
+        if not hasattr(self.ui, 'datasetTreeWidget') or not self._dataset or not self._repository:
             return
         
         tree = self.ui.datasetTreeWidget
@@ -358,9 +439,19 @@ class MainWindow(QMainWindow):
         root_item.setData(0, Qt.ItemDataRole.UserRole, {'type': 'dataset', 'data': self._dataset})
         tree.addTopLevelItem(root_item)
         
-        # Add subjects
-        for subject in self._dataset.subjects:
-            self._add_subject_to_tree(root_item, subject)
+        # Check if lazy loading is enabled
+        settings = get_settings()
+        if settings.lazy_loading:
+            # For lazy loading, add subject stubs that will load on expansion
+            subject_ids = self._repository.get_subject_ids()
+            for subject_id in subject_ids:
+                self._add_subject_stub_to_tree(root_item, subject_id)
+            logger.debug(f"Populated tree with {len(subject_ids)} subject stubs (lazy)")
+        else:
+            # For eager loading, add all subjects normally
+            for subject in self._dataset.subjects:
+                self._add_subject_to_tree(root_item, subject)
+            logger.debug(f"Populated tree with {len(self._dataset.subjects)} subjects (eager)")
         
         # Add dataset-level files (README, LICENSE, CHANGES) after subjects
         self._add_dataset_files_to_tree(root_item)
@@ -368,7 +459,84 @@ class MainWindow(QMainWindow):
         # Expand only the root
         root_item.setExpanded(True)
         
-        logger.debug(f"Populated tree with {len(self._dataset.subjects)} subjects")
+        # Connect tree expansion signal for lazy loading
+        if settings.lazy_loading:
+            tree.itemExpanded.connect(self._on_tree_item_expanded)
+    
+    def _add_subject_stub_to_tree(self, parent_item: QTreeWidgetItem, subject_id: str):
+        """
+        Add a subject stub to the tree (for lazy loading).
+        
+        The subject data will be loaded when the item is expanded.
+        
+        Args:
+            parent_item: Parent tree item.
+            subject_id: Subject identifier.
+        """
+        subject_text = f"🧍 sub-{subject_id}"
+        subject_item = QTreeWidgetItem([subject_text])
+        subject_item.setData(0, Qt.ItemDataRole.UserRole, {
+            'type': 'subject_stub', 
+            'subject_id': subject_id,
+            'loaded': False
+        })
+        parent_item.addChild(subject_item)
+        
+        # Add a dummy child so the expand arrow appears
+        dummy_item = QTreeWidgetItem(["Loading..."])
+        subject_item.addChild(dummy_item)
+    
+    @Slot(QTreeWidgetItem)
+    def _on_tree_item_expanded(self, item: QTreeWidgetItem):
+        """
+        Handle tree item expansion (for lazy loading).
+        
+        Args:
+            item: The tree item that was expanded.
+        """
+        data = item.data(0, Qt.ItemDataRole.UserRole)
+        if not data or data.get('type') != 'subject_stub':
+            return
+        
+        # Check if already loaded
+        if data.get('loaded', False):
+            return
+        
+        subject_id = data.get('subject_id')
+        if not subject_id or not self._repository:
+            return
+        
+        logger.debug(f"Loading subject on expansion: {subject_id}")
+        
+        # Load the subject
+        subject = self._repository.get_subject(subject_id)
+        if subject is None:
+            logger.warning(f"Failed to load subject: {subject_id}")
+            # Remove dummy child and add error message
+            item.takeChildren()
+            error_item = QTreeWidgetItem(["Failed to load"])
+            item.addChild(error_item)
+            return
+        
+        # Remove dummy children
+        item.takeChildren()
+        
+        # Update item data
+        item.setData(0, Qt.ItemDataRole.UserRole, {
+            'type': 'subject',
+            'data': subject,
+            'loaded': True
+        })
+        
+        # Add sessions if present
+        if subject.sessions:
+            for session in subject.sessions:
+                self._add_session_to_tree(item, session)
+        else:
+            # No sessions - add modality folders directly
+            self._add_modality_folders_to_tree(item, subject.files)
+        
+        logger.debug(f"Subject loaded: {subject_id}")
     
     def _add_subject_to_tree(self, parent_item: QTreeWidgetItem, subject: BIDSSubject):
         """Add a subject and its contents to the tree."""
@@ -444,22 +612,32 @@ class MainWindow(QMainWindow):
     
     def _update_status_bar(self):
         """Update the status bar with dataset statistics."""
-        if not self._dataset or not hasattr(self.ui, 'statusbar'):
+        if not self._dataset or not hasattr(self.ui, 'statusbar') or not self._repository:
             return
         
-        num_subjects = len(self._dataset.subjects)
+        settings = get_settings()
         
-        # Count sessions
-        num_sessions = sum(len(s.sessions) for s in self._dataset.subjects)
+        if settings.lazy_loading:
+            # For lazy loading, show total subject count from filesystem
+            subject_ids = self._repository.get_subject_ids()
+            num_subjects = len(subject_ids)
+            status_text = f"Subjects: {num_subjects}"
+        else:
+            # For eager loading, show full statistics
+            num_subjects = len(self._dataset.subjects)
+            
+            # Count sessions
+            num_sessions = sum(len(s.sessions) for s in self._dataset.subjects)
+            
+            # Count files
+            total_files = 0
+            for subject in self._dataset.subjects:
+                total_files += len(subject.files)
+                for session in subject.sessions:
+                    total_files += len(session.files)
+            
+            status_text = f"Subjects: {num_subjects} | Sessions: {num_sessions} | Files: {total_files}"
         
-        # Count files
-        total_files = 0
-        for subject in self._dataset.subjects:
-            total_files += len(subject.files)
-            for session in subject.sessions:
-                total_files += len(session.files)
-        
-        status_text = f"Subjects: {num_subjects} | Sessions: {num_sessions} | Files: {total_files}"
         self.ui.statusbar.showMessage(status_text)
     
     @Slot()

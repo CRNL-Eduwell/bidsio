@@ -114,11 +114,7 @@ class BIDSDataset:
     
     dataset_files: list[BIDSFile] = field(default_factory=list)
     """Dataset-level files (README, LICENSE, CHANGES, etc.)."""
-    
-    # TODO: add methods to query subjects by ID
-    # TODO: add method to get all unique tasks, modalities, sessions
-    # TODO: consider caching for performance with large datasets
-    
+        
     def get_subject(self, subject_id: str) -> Optional[BIDSSubject]:
         """
         Retrieve a subject by ID.
@@ -129,7 +125,6 @@ class BIDSDataset:
         Returns:
             The BIDSSubject if found, None otherwise.
         """
-        # TODO: implement efficient lookup (consider using dict internally)
         for subject in self.subjects:
             if subject.subject_id == subject_id:
                 return subject
@@ -142,8 +137,22 @@ class BIDSDataset:
         Returns:
             Set of modality strings (e.g., {'anat', 'func', 'dwi'}).
         """
-        # TODO: implement by traversing all files
-        raise NotImplementedError("get_all_modalities is not implemented yet.")
+        modalities = set()
+        
+        # Traverse all subjects
+        for subject in self.subjects:
+            # Check subject-level files
+            for file in subject.files:
+                if file.modality:
+                    modalities.add(file.modality)
+            
+            # Check session-level files
+            for session in subject.sessions:
+                for file in session.files:
+                    if file.modality:
+                        modalities.add(file.modality)
+        
+        return modalities
     
     def get_all_tasks(self) -> set[str]:
         """
@@ -152,8 +161,22 @@ class BIDSDataset:
         Returns:
             Set of task strings (e.g., {'rest', 'nback', 'faces'}).
         """
-        # TODO: implement by traversing all runs
-        raise NotImplementedError("get_all_tasks is not implemented yet.")
+        tasks = set()
+        
+        # Traverse all subjects
+        for subject in self.subjects:
+            # Check subject-level files
+            for file in subject.files:
+                if 'task' in file.entities:
+                    tasks.add(file.entities['task'])
+            
+            # Check session-level files
+            for session in subject.sessions:
+                for file in session.files:
+                    if 'task' in file.entities:
+                        tasks.add(file.entities['task'])
+        
+        return tasks
 
 
 @dataclass
