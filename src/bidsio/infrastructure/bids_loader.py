@@ -413,9 +413,22 @@ class BidsLoader:
         """
         all_files = []
         
-        # Scan for anat and ieeg directories (as requested)
-        modality_dirs = ['anat', 'ieeg']
-        # TODO: add all modalities later (func, dwi, fmap, etc.)
+        # Scan for all standard BIDS modality directories
+        modality_dirs = [
+            'anat',      # Anatomical MRI
+            'func',      # Functional MRI
+            'dwi',       # Diffusion MRI
+            'fmap',      # Field maps
+            'ieeg',      # Intracranial EEG
+            'eeg',       # Electroencephalography
+            'meg',       # Magnetoencephalography
+            'beh',       # Behavioral data
+            'pet',       # Positron Emission Tomography
+            'micr',      # Microscopy
+            'nirs',      # Near-Infrared Spectroscopy
+            'motion',    # Motion tracking
+            'perf',      # Perfusion imaging
+        ]
         
         for modality in modality_dirs:
             modality_path = session_path / modality
@@ -515,13 +528,26 @@ def get_bids_version(dataset_path: Path) -> Optional[str]:
     """
     desc_path = dataset_path / "dataset_description.json"
     
-    # TODO: handle errors gracefully
     if not desc_path.exists():
+        logger.warning(f"dataset_description.json not found at: {desc_path}")
         return None
     
     try:
         with open(desc_path, 'r', encoding='utf-8') as f:
             desc = json.load(f)
-            return desc.get("BIDSVersion")
-    except (json.JSONDecodeError, IOError):
+            bids_version = desc.get("BIDSVersion")
+            
+            if bids_version is None:
+                logger.warning(f"BIDSVersion field missing in: {desc_path}")
+            
+            return bids_version
+            
+    except json.JSONDecodeError as e:
+        logger.error(f"Invalid JSON in dataset_description.json: {e}")
+        return None
+    except IOError as e:
+        logger.error(f"Failed to read dataset_description.json: {e}")
+        return None
+    except Exception as e:
+        logger.error(f"Unexpected error reading BIDS version: {e}")
         return None

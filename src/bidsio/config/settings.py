@@ -26,12 +26,13 @@ Example:
 """
 
 import json
-import platform
 import tempfile
 from dataclasses import dataclass, field, asdict
 from pathlib import Path
 from typing import Optional, Any
 import logging
+
+from ..infrastructure.paths import get_persistent_data_directory, get_settings_file_path, get_log_file_path
 
 
 @dataclass
@@ -40,8 +41,8 @@ class AppSettings:
     
     # Logging settings
     log_level: int = logging.INFO
-    log_to_file: bool = False
-    log_file_path: Optional[Path] = None
+    log_to_file: bool = True
+    log_file_path: Optional[Path] = get_log_file_path()
     
     # UI settings
     window_width: int = 1200
@@ -49,18 +50,7 @@ class AppSettings:
     theme: str = "dark_blue"  # Available: dark_blue, dark_teal, dark_amber, light_blue, light_teal, light_amber
     
     # BIDS settings
-    validate_bids_on_load: bool = True
-    cache_dataset_index: bool = True
-    cache_directory: Optional[Path] = None
     lazy_loading: bool = False  # False = eager loading (default), True = lazy loading
-    
-    # Export settings
-    default_copy_mode: str = "copy"  # 'copy', 'symlink', or 'hardlink'
-    verify_exports: bool = True
-    
-    # Performance settings
-    max_threads: int = 4
-    enable_progress_callbacks: bool = True
     
     # Recent files
     recent_datasets: list[str] = field(default_factory=list)
@@ -68,40 +58,6 @@ class AppSettings:
     
     # TODO: add settings for filter defaults
     # TODO: add settings for export templates
-
-
-def get_persistent_data_directory() -> Path:
-    """
-    Get the persistent data directory for the application (cross-platform).
-    
-    Similar to Unity's persistentDataPath, this provides a location where
-    application data can be saved persistently across sessions.
-    
-    Returns:
-        Path to the persistent data directory.
-        
-    Platform-specific locations:
-        - Windows: %APPDATA%/LocalLow/bidsio
-        - macOS: ~/Library/Application Support/bidsio
-        - Linux: ~/.config/bidsio
-    """
-    system = platform.system()
-    app_name = "bidsio"
-    
-    if system == "Windows":
-        # Windows: %APPDATA%/LocalLow/bidsio
-        base = Path.home() / "AppData" / "LocalLow"
-    elif system == "Darwin":
-        # macOS: ~/Library/Application Support/bidsio
-        base = Path.home() / "Library" / "Application Support"
-    else:
-        # Linux/Unix: ~/.config/bidsio
-        base = Path.home() / ".config"
-    
-    data_dir = base / app_name
-    data_dir.mkdir(parents=True, exist_ok=True)
-    
-    return data_dir
 
 
 class SettingsManager:
@@ -145,6 +101,12 @@ class SettingsManager:
             if data.get('cache_directory'):
                 data['cache_directory'] = Path(data['cache_directory'])
             
+            # Normalize recent_datasets to use forward slashes
+            if data.get('recent_datasets'):
+                data['recent_datasets'] = [
+                    str(Path(p)).replace('\\', '/') for p in data['recent_datasets']
+                ]
+            
             # Update settings with loaded data
             for key, value in data.items():
                 if hasattr(self._settings, key):
@@ -176,11 +138,17 @@ class SettingsManager:
             # Convert dataclass to dict
             data = asdict(self._settings)
             
-            # Convert Path objects to strings for JSON serialization
+            # Convert Path objects to strings with forward slashes for JSON serialization
             if data.get('log_file_path'):
-                data['log_file_path'] = str(data['log_file_path'])
+                data['log_file_path'] = str(Path(data['log_file_path'])).replace('\\', '/')
             if data.get('cache_directory'):
-                data['cache_directory'] = str(data['cache_directory'])
+                data['cache_directory'] = str(Path(data['cache_directory'])).replace('\\', '/')
+            
+            # Normalize recent_datasets to use forward slashes
+            if data.get('recent_datasets'):
+                data['recent_datasets'] = [
+                    str(Path(p)).replace('\\', '/') for p in data['recent_datasets']
+                ]
             
             # Atomic write: write to temp file, then rename
             temp_file = self.config_file.with_suffix('.tmp')
@@ -227,12 +195,15 @@ class SettingsManager:
         Args:
             path: Path to the dataset to add.
         """
+        # Normalize path to use forward slashes
+        normalized_path = str(Path(path)).replace('\\\\', '/')
+        
         # Remove if already in list
-        if path in self._settings.recent_datasets:
-            self._settings.recent_datasets.remove(path)
+        if normalized_path in self._settings.recent_datasets:
+            self._settings.recent_datasets.remove(normalized_path)
         
         # Add to front of list
-        self._settings.recent_datasets.insert(0, path)
+        self._settings.recent_datasets.insert(0, normalized_path)
         
         # Trim to max_recent_items
         if len(self._settings.recent_datasets) > self._settings.max_recent_items:
@@ -278,13 +249,3 @@ def get_settings() -> AppSettings:
 # TODO: add validators for settings values
 # TODO: add migration logic for settings file format changes
 # TODO: consider using environment variables for some settings
-
-
-def get_settings_file_path() -> Path:
-    """
-    Get the path to the settings file.
-    
-    Returns:
-        Path to the settings.json file.
-    """
-    return get_persistent_data_directory() / "settings.json"

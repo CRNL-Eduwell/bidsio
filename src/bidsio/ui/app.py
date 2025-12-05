@@ -32,10 +32,13 @@ def main():
     """
     Main entry point for the GUI application.
     """
-    # Setup logging
+    # Setup logging (logs to persistent data directory with rotation)
     settings = get_settings()
-    log_file = settings.log_file_path if settings.log_to_file else None
-    setup_logging(level=settings.log_level, log_file=log_file)
+    setup_logging(
+        level=settings.log_level,
+        log_file=settings.log_file_path,
+        log_to_file=settings.log_to_file
+    )
     
     logger.info("Starting bidsio application")
     
