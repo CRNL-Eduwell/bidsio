@@ -879,6 +879,11 @@ class MainWindow(QMainWindow):
         if not self._details_panel:
             return
         
+        # Load metadata if not already loaded (lazy loading support)
+        # Do this BEFORE building the sections to avoid double UI update
+        if file.metadata is None:
+            file.load_metadata()
+        
         # Get file size
         try:
             file_size = file.path.stat().st_size
@@ -925,7 +930,7 @@ class MainWindow(QMainWindow):
             ]
         })
         
-        # Add metadata if present
+        # Add metadata if present (already loaded at the beginning of the function)
         if file.metadata:
             metadata_items = []
             for key, value in file.metadata.items():

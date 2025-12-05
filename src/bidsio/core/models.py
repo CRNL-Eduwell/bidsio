@@ -30,21 +30,32 @@ class BIDSFile:
     """BIDS entities extracted from filename (e.g., {'task': 'rest', 'run': '01'})."""  
     
     metadata: Optional[dict] = None
-    """Metadata from associated JSON sidecar file (lazy loaded)."""
+    """Metadata from associated JSON sidecar file.
+    
+    - In eager mode: Loaded during dataset parsing and stored here.
+    - In lazy mode: Set to None initially, loaded on-demand via load_metadata().
+    """
     
     # TODO: add validation for BIDS compliance
     
-    def load_metadata(self) -> Optional[dict]:
+    def load_metadata(self, force_reload: bool = False) -> Optional[dict]:
         """
-        Load metadata from the associated JSON sidecar file.
+        Load metadata from the associated JSON sidecar file (lazy loading).
+        
+        This method is designed for lazy loading mode. In eager mode, metadata
+        is already loaded during dataset parsing.
         
         BIDS sidecar files have the same name as the data file but with .json extension.
         For example, sub-01_T1w.nii.gz has sidecar sub-01_T1w.json
         
+        Args:
+            force_reload: If True, reload metadata even if already cached.
+        
         Returns:
             Dictionary of metadata if sidecar exists, None otherwise.
         """
-        if self.metadata is not None:
+        # Return cached metadata unless force_reload is True
+        if self.metadata is not None and not force_reload:
             return self.metadata
         
         # Don't load metadata for JSON files themselves

@@ -118,8 +118,8 @@ class BidsLoader:
         # Load participant metadata
         participant_metadata = self._load_participants_tsv()
         
-        # Scan for subjects
-        subjects = self._scan_subjects(participant_metadata)
+        # Scan for subjects (eager mode - load all metadata)
+        subjects = self._scan_subjects(participant_metadata, eager_load_metadata=True)
         logger.info(f"Found {len(subjects)} subjects")
         
         # Scan for dataset-level files
@@ -311,12 +311,17 @@ class BidsLoader:
         
         return subject_ids
     
-    def _scan_subjects(self, participant_metadata: dict[str, dict[str, str]]) -> list[BIDSSubject]:
+    def _scan_subjects(
+        self, 
+        participant_metadata: dict[str, dict[str, str]],
+        eager_load_metadata: bool = False
+    ) -> list[BIDSSubject]:
         """
         Scan the dataset root for subject directories.
         
         Args:
             participant_metadata: Dictionary mapping subject IDs to their metadata.
+            eager_load_metadata: If True, load all JSON sidecar metadata during parsing.
         
         Returns:
             List of BIDSSubject objects.
@@ -344,13 +349,13 @@ class BidsLoader:
             metadata = participant_metadata.get(subject_id, {})
             
             # Scan for sessions
-            sessions = self._scan_sessions(subject_dir)
+            sessions = self._scan_sessions(subject_dir, eager_load_metadata)
             
             # If no sessions, scan the subject directory directly for files
             subject_files = []
             if not sessions:
                 # Single-session dataset, scan subject directory directly
-                subject_files = self._scan_files(subject_dir)
+                subject_files = self._scan_files(subject_dir, eager_load_metadata)
             
             # Create subject object
             subject = BIDSSubject(
@@ -364,12 +369,13 @@ class BidsLoader:
         
         return subjects
     
-    def _scan_sessions(self, subject_path: Path) -> list[BIDSSession]:
+    def _scan_sessions(self, subject_path: Path, eager_load_metadata: bool = False) -> list[BIDSSession]:
         """
         Scan a subject directory for session directories.
         
         Args:
             subject_path: Path to the subject directory.
+            eager_load_metadata: If True, load all JSON sidecar metadata during parsing.
             
         Returns:
             List of BIDSSession objects.
@@ -389,7 +395,7 @@ class BidsLoader:
             logger.debug(f"  Scanning session: {session_id}")
             
             # Scan for files in this session
-            session_files = self._scan_files(session_dir)
+            session_files = self._scan_files(session_dir, eager_load_metadata)
             
             # Create session object
             session = BIDSSession(
@@ -401,12 +407,13 @@ class BidsLoader:
         
         return sessions
     
-    def _scan_files(self, session_path: Path) -> list[BIDSFile]:
+    def _scan_files(self, session_path: Path, eager_load_metadata: bool = False) -> list[BIDSFile]:
         """
         Scan a session directory for BIDS files.
         
         Args:
             session_path: Path to the session (or subject if no sessions).
+            eager_load_metadata: If True, load all JSON sidecar metadata during parsing.
             
         Returns:
             List of BIDSFile objects found in the session.
@@ -442,19 +449,25 @@ class BidsLoader:
             for filepath in modality_path.iterdir():
                 if filepath.is_file():
                     # Parse the BIDS filename
-                    bids_file = self._parse_bids_filename(filepath, modality)
+                    bids_file = self._parse_bids_filename(filepath, modality, eager_load_metadata)
                     all_files.append(bids_file)
         
         # Run information is stored in file entities (e.g., {'run': '01'})
         return all_files
     
-    def _parse_bids_filename(self, filepath: Path, modality: str) -> BIDSFile:
+    def _parse_bids_filename(
+        self, 
+        filepath: Path, 
+        modality: str,
+        eager_load_metadata: bool = False
+    ) -> BIDSFile:
         """
         Parse a BIDS filename to extract entities and metadata.
         
         Args:
             filepath: Path to the BIDS file.
             modality: The modality directory (anat, ieeg, etc.).
+            eager_load_metadata: If True, load JSON sidecar metadata immediately.
             
         Returns:
             A BIDSFile object with parsed entities.
@@ -494,11 +507,14 @@ class BidsLoader:
             modality=modality,
             suffix=suffix,
             extension=extension,
-            entities=entities
+            entities=entities,
+            metadata=None  # Will be loaded based on mode
         )
         
-        # Load metadata from JSON sidecar if available
-        bids_file.load_metadata()
+        # In eager mode, load metadata immediately using the BIDSFile method
+        if eager_load_metadata:
+            bids_file.load_metadata()
+        # In lazy mode, metadata stays None and will be loaded on-demand
         
         return bids_file
 

@@ -34,12 +34,13 @@ class DetailsPanel(QWidget):
     
     def clear(self):
         """Clear all content and show placeholder."""
-        # Remove all widgets from layout
+        # Remove all widgets from layout immediately to avoid double layout calculation
         while self._layout.count() > 0:
             item = self._layout.takeAt(0)
             widget = item.widget()
             if widget:
-                widget.deleteLater()
+                widget.setParent(None)  # Remove from parent immediately
+                widget.deleteLater()    # Schedule for cleanup
         
         # Re-add placeholder and spacer
         self.ui.placeholderLabel = QLabel("Select an item to view details")
@@ -66,12 +67,13 @@ class DetailsPanel(QWidget):
                     ]
                 }
         """
-        # Clear existing content
+        # Clear existing content immediately to avoid double layout calculation
         while self._layout.count() > 0:
             item = self._layout.takeAt(0)
             widget = item.widget()
             if widget:
-                widget.deleteLater()
+                widget.setParent(None)  # Remove from parent immediately
+                widget.deleteLater()    # Schedule for cleanup
         
         # Add sections
         for section in sections:
