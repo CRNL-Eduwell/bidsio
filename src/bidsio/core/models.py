@@ -94,6 +94,23 @@ class BIDSSession:
 
 
 @dataclass
+class BIDSDerivative:
+    """Represents a derivative pipeline for a subject."""
+    
+    pipeline_name: str
+    """Name of the derivative pipeline (e.g., 'fmriprep', 'freesurfer')."""
+    
+    sessions: list[BIDSSession] = field(default_factory=list)
+    """List of sessions with derivative data (mirrors subject structure)."""
+    
+    files: list[BIDSFile] = field(default_factory=list)
+    """Subject-level derivative files not in sessions."""
+    
+    pipeline_description: dict = field(default_factory=dict)
+    """Contents of pipeline's dataset_description.json if present."""
+
+
+@dataclass
 class BIDSSubject:
     """Represents a subject in a BIDS dataset."""
     
@@ -106,10 +123,26 @@ class BIDSSubject:
     files: list[BIDSFile] = field(default_factory=list)
     """Subject-level files not associated with a specific session."""
     
+    derivatives: list[BIDSDerivative] = field(default_factory=list)
+    """List of derivative pipelines for this subject."""
+    
     metadata: dict[str, str] = field(default_factory=dict)
     """Participant metadata from participants.tsv (age, sex, group, etc.)."""
     
-    # TODO: add methods to query sessions by ID
+    def get_derivative(self, pipeline_name: str) -> Optional[BIDSDerivative]:
+        """
+        Retrieve a derivative pipeline by name.
+        
+        Args:
+            pipeline_name: The pipeline name to search for.
+            
+        Returns:
+            The BIDSDerivative if found, None otherwise.
+        """
+        for derivative in self.derivatives:
+            if derivative.pipeline_name == pipeline_name:
+                return derivative
+        return None
 
 
 @dataclass
@@ -236,21 +269,17 @@ class BIDSDataset:
         """
         Get all derivative pipeline names in the dataset.
         
-        Scans the derivatives/ folder for pipeline directories.
+        Extracts pipeline names from loaded derivative data across all subjects.
         
         Returns:
-            Sorted list of pipeline names (e.g., ['fmriprep', 'freesurfer']).
+            Sorted list of unique pipeline names (e.g., ['fmriprep', 'freesurfer']).
         """
-        pipelines = []
-        derivatives_path = self.root_path / 'derivatives'
+        pipelines = set()
         
-        if not derivatives_path.exists():
-            return []
-        
-        # Each subdirectory in derivatives/ is a pipeline
-        for item in derivatives_path.iterdir():
-            if item.is_dir():
-                pipelines.append(item.name)
+        # Collect pipeline names from all subjects
+        for subject in self.subjects:
+            for derivative in subject.derivatives:
+                pipelines.add(derivative.pipeline_name)
         
         return sorted(pipelines)
     

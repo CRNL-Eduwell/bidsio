@@ -19,7 +19,7 @@ from qt_material import apply_stylesheet
 from bidsio.infrastructure.logging_config import get_logger
 from bidsio.config.settings import get_settings_manager, get_settings
 from bidsio.core.repository import BidsRepository
-from bidsio.core.models import BIDSDataset, BIDSSubject, BIDSSession, BIDSFile, FilterCriteria
+from bidsio.core.models import BIDSDataset, BIDSSubject, BIDSSession, BIDSFile, BIDSDerivative, FilterCriteria
 from bidsio.ui.about_dialog import AboutDialog
 from bidsio.ui.preferences_dialog import PreferencesDialog
 from bidsio.ui.json_viewer_dialog import JsonViewerDialog
@@ -703,6 +703,18 @@ class MainWindow(QMainWindow):
         else:
             # No sessions - add modality folders directly
             self._add_modality_folders_to_tree(subject_item, subject.files)
+        
+        # Add derivatives section if present
+        if subject.derivatives:
+            derivatives_item = QTreeWidgetItem(["📊 derivatives"])
+            derivatives_item.setData(0, Qt.ItemDataRole.UserRole, {
+                'type': 'derivatives_folder', 
+                'data': subject
+            })
+            subject_item.addChild(derivatives_item)
+            
+            for derivative in subject.derivatives:
+                self._add_derivative_to_tree(derivatives_item, derivative, subject.subject_id)
     
     def _add_session_to_tree(self, parent_item: QTreeWidgetItem, session: BIDSSession):
         """Add a session and its contents to the tree."""
@@ -744,6 +756,57 @@ class MainWindow(QMainWindow):
         file_item = QTreeWidgetItem([file_text])
         file_item.setData(0, Qt.ItemDataRole.UserRole, {'type': 'file', 'data': file})
         parent_item.addChild(file_item)
+    
+    def _add_derivative_to_tree(self, parent_item: QTreeWidgetItem, derivative, subject_id: str):
+        """
+        Add a derivative pipeline to the tree.
+        
+        Args:
+            parent_item: The derivatives folder item.
+            derivative: The BIDSDerivative to add.
+            subject_id: The subject ID (for context).
+        """
+        pipeline_text = f"📦 {derivative.pipeline_name}"
+        pipeline_item = QTreeWidgetItem([pipeline_text])
+        pipeline_item.setData(0, Qt.ItemDataRole.UserRole, {
+            'type': 'derivative',
+            'data': derivative,
+            'subject_id': subject_id
+        })
+        parent_item.addChild(pipeline_item)
+        
+        # Add sessions if present (mirroring subject structure)
+        if derivative.sessions:
+            for session in derivative.sessions:
+                self._add_derivative_session_to_tree(pipeline_item, session)
+        else:
+            # No sessions - add modality folders directly
+            self._add_modality_folders_to_tree(pipeline_item, derivative.files)
+    
+    def _add_derivative_session_to_tree(self, parent_item: QTreeWidgetItem, session: BIDSSession):
+        """
+        Add a derivative session to the tree.
+        
+        Uses same structure as regular sessions.
+        
+        Args:
+            parent_item: The pipeline item.
+            session: The BIDSSession to add.
+        """
+        # Get pipeline name from parent item
+        parent_data = parent_item.data(0, Qt.ItemDataRole.UserRole)
+        pipeline_name = parent_data.get('data').pipeline_name if parent_data and 'data' in parent_data else 'unknown'
+        
+        session_text = f"📂 ses-{session.session_id}"
+        session_item = QTreeWidgetItem([session_text])
+        session_item.setData(0, Qt.ItemDataRole.UserRole, {
+            'type': 'derivative_session',
+            'data': {'session': session, 'pipeline_name': pipeline_name}
+        })
+        parent_item.addChild(session_item)
+        
+        # Add modality folders
+        self._add_modality_folders_to_tree(session_item, session.files)
     
     def _add_dataset_files_to_tree(self, parent_item: QTreeWidgetItem):
         """
@@ -823,6 +886,12 @@ class MainWindow(QMainWindow):
             self._display_modality_details(data)
         elif item_type == 'file':
             self._display_file_details(data)
+        elif item_type == 'derivatives_folder':
+            self._display_derivatives_folder_details(data)
+        elif item_type == 'derivative':
+            self._display_derivative_details(data)
+        elif item_type == 'derivative_session':
+            self._display_derivative_session_details(data)
         else:
             self._details_panel.clear()
     
@@ -848,7 +917,7 @@ class MainWindow(QMainWindow):
         
         if item_type == 'file':
             self._open_file(data)
-        elif item_type in ['dataset', 'subject', 'session', 'modality']:
+        elif item_type in ['dataset', 'subject', 'session', 'modality', 'derivatives_folder', 'derivative', 'derivative_session']:
             self._open_folder(item_type, data)
     
     def _display_dataset_details(self, dataset: BIDSDataset):
@@ -1060,6 +1129,110 @@ class MainWindow(QMainWindow):
         
         self._details_panel.set_content(sections)
     
+    def _display_derivatives_folder_details(self, subject: BIDSSubject):
+        """Display derivatives folder information in details panel."""
+        if not self._details_panel:
+            return
+        
+        # Count derivatives and files
+        num_derivatives = len(subject.derivatives)
+        total_files = sum(
+            len(deriv.files) + sum(len(ses.files) for ses in deriv.sessions)
+            for deriv in subject.derivatives
+        )
+        
+        # List derivative pipelines
+        pipeline_items = [
+            {'key': deriv.pipeline_name, 'value': f'{len(deriv.files) + sum(len(ses.files) for ses in deriv.sessions)} file{"s" if (len(deriv.files) + sum(len(ses.files) for ses in deriv.sessions)) != 1 else ""}'}
+            for deriv in subject.derivatives
+        ]
+        
+        sections = [
+            {
+                'title': f'Derivatives for sub-{subject.subject_id}',
+                'items': [
+                    {'key': 'Pipelines', 'value': num_derivatives},
+                    {'key': 'Total Files', 'value': total_files},
+                ]
+            }
+        ]
+        
+        if pipeline_items:
+            sections.append({
+                'title': 'Pipelines',
+                'items': pipeline_items
+            })
+        
+        self._details_panel.set_content(sections)
+    
+    def _display_derivative_details(self, derivative: BIDSDerivative):
+        """Display derivative pipeline information in details panel."""
+        if not self._details_panel:
+            return
+        
+        # Count statistics
+        num_sessions = len(derivative.sessions)
+        total_files = len(derivative.files) + sum(len(ses.files) for ses in derivative.sessions)
+        
+        # Build derivative items
+        derivative_items = [
+            {'key': 'Pipeline Name', 'value': derivative.pipeline_name},
+            {'key': 'Sessions', 'value': num_sessions},
+            {'key': 'Total Files', 'value': total_files},
+        ]
+        
+        # Add description if available
+        if derivative.pipeline_description:
+            desc = derivative.pipeline_description
+            if 'Name' in desc:
+                derivative_items.append({'key': 'Pipeline Full Name', 'value': desc['Name']})
+            if 'PipelineDescription' in desc:
+                derivative_items.append({'key': 'Description', 'value': desc['PipelineDescription'].get('Name', 'N/A')})
+            if 'GeneratedBy' in desc:
+                generated_by = desc['GeneratedBy']
+                if isinstance(generated_by, list) and generated_by:
+                    gen = generated_by[0]
+                    if 'Name' in gen:
+                        derivative_items.append({'key': 'Generated By', 'value': gen['Name']})
+                    if 'Version' in gen:
+                        derivative_items.append({'key': 'Version', 'value': gen['Version']})
+        
+        sections = [
+            {
+                'title': f'Derivative: {derivative.pipeline_name}',
+                'items': derivative_items
+            }
+        ]
+        
+        self._details_panel.set_content(sections)
+    
+    def _display_derivative_session_details(self, data: dict):
+        """Display derivative session information in details panel."""
+        if not self._details_panel:
+            return
+        
+        session = data.get('session')
+        pipeline_name = data.get('pipeline_name', 'unknown')
+        
+        if not session:
+            self._details_panel.clear()
+            return
+        
+        # Count modalities
+        modalities = Counter(f.modality for f in session.files if f.modality)
+        
+        sections = [
+            {
+                'title': f'Derivative Session: {pipeline_name}/ses-{session.session_id}',
+                'items': [
+                    {'key': modality, 'value': f'{count} file{"s" if count != 1 else ""}'}
+                    for modality, count in sorted(modalities.items())
+                ]
+            }
+        ]
+        
+        self._details_panel.set_content(sections)
+    
     def _open_file(self, file: BIDSFile):
         """
         Open a file based on its type.
@@ -1118,7 +1291,7 @@ class MainWindow(QMainWindow):
         Open a folder in the OS file explorer.
         
         Args:
-            item_type: Type of item (dataset, subject, session, modality).
+            item_type: Type of item (dataset, subject, session, modality, derivatives_folder, derivative, derivative_session).
             data: Data associated with the item.
         """
         # Determine the folder path based on item type
@@ -1130,6 +1303,49 @@ class MainWindow(QMainWindow):
             # Construct subject path from dataset root
             if self._dataset:
                 folder_path = self._dataset.root_path / f"sub-{data.subject_id}"
+        elif item_type == 'derivatives_folder' and isinstance(data, BIDSSubject):
+            # Open derivatives folder at dataset root
+            if self._dataset:
+                folder_path = self._dataset.root_path / "derivatives"
+        elif item_type == 'derivative' and isinstance(data, BIDSDerivative):
+            # Open derivative subject folder - get path from files
+            if data.files:
+                # Get path from first file and navigate to subject directory
+                first_file = data.files[0].path
+                # Navigate up to find sub-XX directory
+                current = first_file.parent
+                while current and self._dataset and current != self._dataset.root_path:
+                    if 'sub-' in current.name and current.name.startswith('sub-'):
+                        folder_path = current
+                        break
+                    current = current.parent
+            elif data.sessions:
+                # Get path from first session's files
+                for session in data.sessions:
+                    if session.files:
+                        first_file = session.files[0].path
+                        # Navigate up to find sub-XX directory
+                        current = first_file.parent
+                        while current and self._dataset and current != self._dataset.root_path:
+                            if 'sub-' in current.name and current.name.startswith('sub-'):
+                                folder_path = current
+                                break
+                            current = current.parent
+                        if folder_path:
+                            break
+        elif item_type == 'derivative_session' and isinstance(data, dict):
+            # Open derivative session folder - get path from files
+            session = data.get('session')
+            if session and session.files:
+                # Get parent directory from first file (go up to session folder)
+                first_file_path = session.files[0].path
+                # Navigate up to find ses-XX directory
+                current = first_file_path.parent
+                while current and self._dataset and current != self._dataset.root_path:
+                    if current.name == f"ses-{session.session_id}":
+                        folder_path = current
+                        break
+                    current = current.parent
         elif item_type == 'session' and isinstance(data, BIDSSession):
             # Need to find parent subject to construct path
             # This is a bit tricky - we need to get the path from a file if available

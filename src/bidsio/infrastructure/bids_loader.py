@@ -15,7 +15,8 @@ from ..core.models import (
     BIDSDataset,
     BIDSSubject,
     BIDSSession,
-    BIDSFile
+    BIDSFile,
+    BIDSDerivative
 )
 from .logging_config import get_logger
 
@@ -357,11 +358,15 @@ class BidsLoader:
                 # Single-session dataset, scan subject directory directly
                 subject_files = self._scan_files(subject_dir, eager_load_metadata)
             
+            # Scan derivatives for this subject (if derivatives folder exists)
+            derivatives = self._scan_subject_derivatives(subject_id, eager_load_metadata)
+            
             # Create subject object
             subject = BIDSSubject(
                 subject_id=subject_id,
                 sessions=sessions,
                 files=subject_files,
+                derivatives=derivatives,
                 metadata=metadata
             )
             
@@ -517,6 +522,162 @@ class BidsLoader:
         # In lazy mode, metadata stays None and will be loaded on-demand
         
         return bids_file
+    
+    def _scan_subject_derivatives(
+        self, 
+        subject_id: str,
+        eager_load_metadata: bool = False
+    ) -> list[BIDSDerivative]:
+        """
+        Scan derivatives folder for a specific subject.
+        
+        Scans the standard BIDS derivatives structure:
+        derivatives/pipeline_name/.../sub-XX/ses-YY/
+        
+        Args:
+            subject_id: The subject ID to scan derivatives for.
+            eager_load_metadata: If True, load all JSON sidecar metadata during parsing.
+            
+        Returns:
+            List of BIDSDerivative objects, one per pipeline.
+        """
+        derivatives = []
+        derivatives_root = self.root_path / "derivatives"
+        
+        # If no derivatives folder exists at dataset root, return empty list
+        if not derivatives_root.exists():
+            return derivatives
+        
+        # Scan each pipeline directory
+        for pipeline_dir in sorted(derivatives_root.iterdir()):
+            if not pipeline_dir.is_dir():
+                continue
+            
+            pipeline_name = pipeline_dir.name
+            
+            # Load pipeline description if exists (at pipeline root)
+            pipeline_description = {}
+            pipeline_desc_file = pipeline_dir / 'dataset_description.json'
+            if pipeline_desc_file.exists():
+                try:
+                    with open(pipeline_desc_file, 'r', encoding='utf-8') as f:
+                        pipeline_description = json.load(f)
+                except (json.JSONDecodeError, IOError) as e:
+                    logger.warning(f"Failed to load pipeline description for {pipeline_name}: {e}")
+            
+            # Find this subject's data within the pipeline (recursively search for sub-XX)
+            subject_derivative_path = self._find_subject_in_pipeline(pipeline_dir, subject_id)
+            
+            if not subject_derivative_path:
+                continue
+            
+            logger.debug(f"Scanning derivative pipeline '{pipeline_name}' for subject {subject_id}")
+            
+            # Scan sessions within this subject's derivative data
+            sessions = self._scan_derivative_sessions(subject_derivative_path, eager_load_metadata)
+            
+            # If no sessions, scan subject directory directly
+            derivative_files = []
+            if not sessions:
+                derivative_files = self._scan_derivative_files(subject_derivative_path, eager_load_metadata)
+            
+            # Create derivative object
+            derivative = BIDSDerivative(
+                pipeline_name=pipeline_name,
+                sessions=sessions,
+                files=derivative_files,
+                pipeline_description=pipeline_description
+            )
+            
+            derivatives.append(derivative)
+        
+        return derivatives
+    
+    def _find_subject_in_pipeline(
+        self,
+        pipeline_dir: Path,
+        subject_id: str
+    ) -> Optional[Path]:
+        """
+        Find a subject's directory within a derivative pipeline.
+        
+        Searches recursively for sub-XX directory within the pipeline.
+        
+        Args:
+            pipeline_dir: Path to the pipeline directory.
+            subject_id: The subject ID to find.
+            
+        Returns:
+            Path to the subject's derivative directory, or None if not found.
+        """
+        subject_pattern = f"sub-{subject_id}"
+        
+        # Search recursively for subject directory
+        for path in pipeline_dir.rglob(subject_pattern):
+            if path.is_dir() and path.name == subject_pattern:
+                return path
+        
+        return None
+    
+    def _scan_derivative_sessions(
+        self, 
+        subject_path: Path,
+        eager_load_metadata: bool = False
+    ) -> list[BIDSSession]:
+        """
+        Scan sessions within a subject's derivative data.
+        
+        Args:
+            subject_path: Path to the subject directory in derivatives.
+            eager_load_metadata: If True, load all JSON sidecar metadata during parsing.
+            
+        Returns:
+            List of BIDSSession objects.
+        """
+        sessions = []
+        
+        # Look for session directories (ses-*)
+        session_dirs = sorted(subject_path.glob('ses-*'))
+        
+        for session_dir in session_dirs:
+            if not session_dir.is_dir():
+                continue
+            
+            # Extract session ID
+            session_id = session_dir.name.replace('ses-', '')
+            
+            # Scan files in this session
+            session_files = self._scan_derivative_files(session_dir, eager_load_metadata)
+            
+            # Create session object
+            session = BIDSSession(
+                session_id=session_id,
+                files=session_files
+            )
+            
+            sessions.append(session)
+        
+        return sessions
+    
+    def _scan_derivative_files(
+        self, 
+        path: Path,
+        eager_load_metadata: bool = False
+    ) -> list[BIDSFile]:
+        """
+        Scan files in a derivative directory.
+        
+        Uses the same logic as regular file scanning to maintain consistency.
+        
+        Args:
+            path: Path to scan for files.
+            eager_load_metadata: If True, load all JSON sidecar metadata during parsing.
+            
+        Returns:
+            List of BIDSFile objects.
+        """
+        # Reuse the existing _scan_files method as derivatives follow BIDS structure
+        return self._scan_files(path, eager_load_metadata)
 
 
 def is_bids_dataset(path: Path) -> bool:

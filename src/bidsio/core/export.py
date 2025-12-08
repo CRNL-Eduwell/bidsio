@@ -60,6 +60,14 @@ def export_dataset(
     # Copy dataset-level metadata files
     _copy_dataset_metadata(source_dataset, output_path)
     
+    # Copy derivative pipeline metadata files
+    if request.selected_entities.derivative_pipelines:
+        _copy_derivative_metadata(
+            source_dataset=source_dataset,
+            output_path=output_path,
+            selected_pipelines=request.selected_entities.derivative_pipelines
+        )
+    
     # Create filtered participants.tsv
     selected_subjects = request.selected_entities.entities.get('sub', [])
     if selected_subjects:
@@ -335,74 +343,58 @@ def _get_derivative_files(
     """
     Get all derivative files matching the selected entities.
     
+    Uses the loaded derivative data from the dataset model to efficiently
+    retrieve files without filesystem scanning.
+    
     Args:
-        dataset: The source dataset.
+        dataset: The source dataset with loaded derivatives.
         selected_entities: The selected entities.
         
     Returns:
         List of derivative file paths.
     """
     derivative_files = []
-    derivatives_path = dataset.root_path / 'derivatives'
     
-    if not derivatives_path.exists():
-        return derivative_files
+    # Get selected subjects (if any)
+    selected_subjects = selected_entities.entities.get('sub', [])
     
-    # For each selected pipeline
-    for pipeline in selected_entities.derivative_pipelines:
-        pipeline_path = derivatives_path / pipeline
-        if not pipeline_path.exists():
+    # Iterate through subjects
+    for subject in dataset.subjects:
+        # Skip subject if not selected
+        if selected_subjects and subject.subject_id not in selected_subjects:
             continue
         
-        # Recursively find all files in the pipeline directory
-        # and filter them by selected entities
-        for file_path in pipeline_path.rglob('*'):
-            if file_path.is_file():
-                # Parse filename to extract entities
-                if _derivative_file_matches(file_path, selected_entities):
-                    derivative_files.append(file_path)
+        # Iterate through subject's derivatives
+        for derivative in subject.derivatives:
+            # Skip pipeline if not selected
+            if derivative.pipeline_name not in selected_entities.derivative_pipelines:
+                continue
+            
+            # Process derivative-level files (no session)
+            for file in derivative.files:
+                if _file_matches_entities(file, subject.subject_id, None, selected_entities):
+                    derivative_files.append(file.path)
+                    # Include JSON sidecar if exists
+                    sidecar_path = _get_sidecar_path(file.path)
+                    if sidecar_path and sidecar_path.exists():
+                        derivative_files.append(sidecar_path)
+            
+            # Process derivative session files
+            for session in derivative.sessions:
+                # Check if session is selected
+                selected_sessions = selected_entities.entities.get('ses', [])
+                if selected_sessions and session.session_id and session.session_id not in selected_sessions:
+                    continue
+                
+                for file in session.files:
+                    if _file_matches_entities(file, subject.subject_id, session.session_id, selected_entities):
+                        derivative_files.append(file.path)
+                        # Include JSON sidecar if exists
+                        sidecar_path = _get_sidecar_path(file.path)
+                        if sidecar_path and sidecar_path.exists():
+                            derivative_files.append(sidecar_path)
     
     return derivative_files
-
-
-def _derivative_file_matches(
-    file_path: Path,
-    selected_entities: SelectedEntities
-) -> bool:
-    """
-    Check if a derivative file matches selected entities.
-    
-    Args:
-        file_path: Path to the derivative file.
-        selected_entities: The selected entities.
-        
-    Returns:
-        True if the file matches.
-    """
-    filename = file_path.name
-    
-    # Extract entities from filename
-    # BIDS filenames have format: sub-<label>_ses-<label>_..._suffix.ext
-    parts = filename.split('_')
-    file_entities = {}
-    
-    for part in parts:
-        if '-' in part:
-            key, value = part.split('-', 1)
-            # Remove extension from value if it's the last part
-            value = value.split('.')[0]
-            file_entities[key] = value
-    
-    # Check if all file entities match selected entities
-    for entity_key, entity_value in file_entities.items():
-        # If this entity is in the selection criteria (user has interacted with it)
-        if entity_key in selected_entities.entities:
-            selected_values = selected_entities.entities[entity_key]
-            # If the list is empty or file's value is not in the list, exclude the file
-            if not selected_values or entity_value not in selected_values:
-                return False
-    
-    return True
 
 
 def _copy_dataset_metadata(source_dataset: BIDSDataset, output_path: Path) -> None:
@@ -434,3 +426,50 @@ def _copy_dataset_metadata(source_dataset: BIDSDataset, output_path: Path) -> No
     license_file = source_root / 'LICENSE'
     if license_file.exists():
         shutil.copy2(license_file, output_path / 'LICENSE')
+
+
+def _copy_derivative_metadata(
+    source_dataset: BIDSDataset,
+    output_path: Path,
+    selected_pipelines: list[str]
+) -> None:
+    """
+    Copy derivative pipeline metadata files.
+    
+    Copies dataset_description.json files for each selected derivative pipeline
+    to maintain BIDS compliance in the exported dataset.
+    
+    Uses standard BIDS derivatives structure: derivatives/pipeline_name/dataset_description.json
+    
+    Args:
+        source_dataset: The source dataset.
+        output_path: The output directory.
+        selected_pipelines: List of selected pipeline names.
+    """
+    # Get list of all subjects with derivatives
+    subjects_with_derivatives = [s for s in source_dataset.subjects if s.derivatives]
+    
+    if not subjects_with_derivatives:
+        return
+    
+    # Copy pipeline descriptions for each selected pipeline
+    # Pipeline descriptions are at derivatives/pipeline_name/dataset_description.json
+    for pipeline_name in selected_pipelines:
+        # Source path: derivatives/pipeline_name/dataset_description.json
+        source_desc_path = (
+            source_dataset.root_path / 
+            "derivatives" / 
+            pipeline_name / 
+            "dataset_description.json"
+        )
+        
+        if source_desc_path.exists():
+            # Destination path: same structure in output
+            dest_desc_path = (
+                output_path / 
+                "derivatives" / 
+                pipeline_name / 
+                "dataset_description.json"
+            )
+            dest_desc_path.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copy2(source_desc_path, dest_desc_path)

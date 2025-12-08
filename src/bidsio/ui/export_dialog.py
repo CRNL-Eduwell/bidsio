@@ -125,8 +125,8 @@ class ExportDialog(QDialog):
             self._selected_pipelines = pipelines.copy()  # All selected by default
             self.ui.pipelinesCountLabel.setText(f"({len(pipelines)} selected)")
         else:
-            self.ui.derivativesGroupBox.setEnabled(False)
-            self.ui.pipelinesCountLabel.setText("(No derivatives)")
+            # Hide derivatives group box if no derivatives present
+            self.ui.derivativesGroupBox.setVisible(False)
         
         logger.debug(f"Populated {len(entities_data)} entity selectors")
     
