@@ -13,6 +13,7 @@ from src.bidsio.core.models import (
     BIDSSubject,
     BIDSDataset,
     FilterCriteria,
+    SelectedEntities,
     ExportRequest
 )
 
@@ -102,17 +103,17 @@ class TestExportRequest:
     def test_create_export_request(self):
         """Test creating an ExportRequest."""
         dataset = BIDSDataset(root_path=Path("/data"))
-        criteria = FilterCriteria(subject_ids=["01"])
+        selected = SelectedEntities(entities={"sub": ["01"]}, derivative_pipelines=[])
         
         request = ExportRequest(
             source_dataset=dataset,
-            filter_criteria=criteria,
+            selected_entities=selected,
             output_path=Path("/output")
         )
         
         assert request.source_dataset == dataset
-        assert request.filter_criteria == criteria
+        assert request.selected_entities == selected
         assert request.output_path == Path("/output")
-        assert request.copy_mode == "copy"
+        assert request.overwrite == False
     
     # TODO: test validation of export request

@@ -125,17 +125,14 @@ class TestBidsRepository:
     
     def test_load_nonexistent_path(self):
         """Test loading from non-existent path raises FileNotFoundError."""
-        repo = BidsRepository(Path("/nonexistent/path"))
-        
         with pytest.raises(FileNotFoundError):
-            repo.load()
+            repo = BidsRepository(Path("/nonexistent/path"))
     
     def test_load_invalid_bids_dataset(self, tmp_path):
         """Test loading invalid BIDS dataset raises ValueError."""
         # Create directory without dataset_description.json
-        repo = BidsRepository(tmp_path)
-        
         with pytest.raises(ValueError):
+            repo = BidsRepository(tmp_path)
             repo.load()
     
     def test_load_minimal_bids_dataset(self, tmp_path):

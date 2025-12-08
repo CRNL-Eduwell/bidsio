@@ -101,7 +101,15 @@ def generate_file_list(
     matching_files = []
     
     # Extract selected subject IDs
-    selected_subjects = selected_entities.entities.get('sub', [])
+    # If 'sub' key is present with empty list, no subjects are selected
+    if 'sub' in selected_entities.entities:
+        selected_subjects = selected_entities.entities['sub']
+        if not selected_subjects:
+            # Empty selection - no subjects to export
+            return []
+    else:
+        # No subject filter - export all subjects
+        selected_subjects = []
     
     # Traverse subjects
     for subject in dataset.subjects:

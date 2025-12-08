@@ -10,7 +10,15 @@ from typing import Generator
 import tempfile
 import shutil
 
-from src.bidsio.core.models import BIDSDataset, BIDSSubject, BIDSSession
+from src.bidsio.core.models import (
+    BIDSDataset,
+    BIDSSubject,
+    BIDSSession,
+    BIDSFile,
+    BIDSDerivative,
+    ExportRequest,
+    SelectedEntities
+)
 
 
 @pytest.fixture
@@ -63,7 +71,73 @@ def sample_subject() -> BIDSSubject:
     return subject
 
 
-# TODO: add fixture for creating a mock BIDS directory structure on disk
-# TODO: add fixture for sample FilterCriteria
-# TODO: add fixture for sample ExportRequest
-# TODO: add fixtures for GUI testing with pytest-qt
+@pytest.fixture
+def sample_file() -> BIDSFile:
+    """
+    Create a sample BIDS file for testing.
+    
+    Returns:
+        A BIDSFile with typical properties.
+    """
+    return BIDSFile(
+        path=Path("/test/data/sub-01/ses-pre/anat/sub-01_ses-pre_T1w.nii.gz"),
+        modality="anat",
+        suffix="T1w",
+        extension=".nii.gz",
+        entities={"sub": "01", "ses": "pre"}
+    )
+
+
+@pytest.fixture
+def sample_derivative() -> BIDSDerivative:
+    """
+    Create a sample derivative for testing.
+    
+    Returns:
+        A BIDSDerivative with sessions and files.
+    """
+    file1 = BIDSFile(
+        path=Path("/test/derivatives/pipeline1/sub-01/ses-pre/anat/sub-01_ses-pre_space-MNI_T1w.nii.gz"),
+        modality="anat",
+        suffix="T1w",
+        extension=".nii.gz",
+        entities={"sub": "01", "ses": "pre", "space": "MNI"}
+    )
+    
+    session = BIDSSession(session_id="pre", files=[file1])
+    
+    return BIDSDerivative(
+        pipeline_name="pipeline1",
+        sessions=[session],
+        files=[],
+        pipeline_description={"Name": "Pipeline 1", "Version": "1.0"}
+    )
+
+
+@pytest.fixture
+def sample_selected_entities() -> SelectedEntities:
+    """
+    Create sample SelectedEntities for testing.
+    
+    Returns:
+        A SelectedEntities object with typical selections.
+    """
+    return SelectedEntities(
+        entities={"sub": ["01", "02"], "ses": ["pre", "post"]},
+        derivative_pipelines=["pipeline1"]
+    )
+
+
+@pytest.fixture
+def sample_export_request(sample_dataset, sample_selected_entities, temp_dir) -> ExportRequest:
+    """
+    Create a sample ExportRequest for testing.
+    
+    Returns:
+        An ExportRequest with test data.
+    """
+    return ExportRequest(
+        source_dataset=sample_dataset,
+        selected_entities=sample_selected_entities,
+        output_path=temp_dir / "export"
+    )
