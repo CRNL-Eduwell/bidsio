@@ -1,0 +1,200 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>ExportDialog</class>
+ <widget class="QDialog" name="ExportDialog">
+  <property name="geometry">
+   <rect>
+    <x>0</x>
+    <y>0</y>
+    <width>600</width>
+    <height>600</height>
+   </rect>
+  </property>
+  <property name="windowTitle">
+   <string>Export BIDS Dataset</string>
+  </property>
+  <layout class="QVBoxLayout" name="verticalLayout">
+   <item>
+    <widget class="QGroupBox" name="destinationGroupBox">
+     <property name="title">
+      <string>📂 Destination</string>
+     </property>
+     <layout class="QHBoxLayout" name="destinationLayout">
+      <item>
+       <widget class="QLineEdit" name="destinationLineEdit">
+        <property name="placeholderText">
+         <string>Select destination directory...</string>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <widget class="QPushButton" name="browseButton">
+        <property name="text">
+         <string>Browse...</string>
+        </property>
+       </widget>
+      </item>
+     </layout>
+    </widget>
+   </item>
+   <item>
+    <widget class="QGroupBox" name="rawDataGroupBox">
+     <property name="title">
+      <string>📋 Raw Data Selection</string>
+     </property>
+     <layout class="QVBoxLayout" name="rawDataLayout">
+      <item>
+       <widget class="QScrollArea" name="entitiesScrollArea">
+        <property name="widgetResizable">
+         <bool>true</bool>
+        </property>
+        <property name="frameShape">
+         <enum>QFrame::NoFrame</enum>
+        </property>
+        <widget class="QWidget" name="entitiesScrollAreaContent">
+         <property name="geometry">
+          <rect>
+           <x>0</x>
+           <y>0</y>
+           <width>564</width>
+           <height>200</height>
+          </rect>
+         </property>
+         <layout class="QVBoxLayout" name="entitiesScrollLayout">
+          <item>
+           <layout class="QVBoxLayout" name="entitiesLayout">
+            <property name="spacing">
+             <number>6</number>
+            </property>
+           </layout>
+          </item>
+          <item>
+           <spacer name="entitiesSpacer">
+            <property name="orientation">
+             <enum>Qt::Vertical</enum>
+            </property>
+            <property name="sizeHint" stdset="0">
+             <size>
+              <width>20</width>
+              <height>40</height>
+             </size>
+            </property>
+           </spacer>
+          </item>
+         </layout>
+        </widget>
+       </widget>
+      </item>
+     </layout>
+    </widget>
+   </item>
+   <item>
+    <widget class="QGroupBox" name="derivativesGroupBox">
+     <property name="title">
+      <string>📊 Derivatives Selection</string>
+     </property>
+     <layout class="QHBoxLayout" name="derivativesLayout">
+      <item>
+       <widget class="QLabel" name="pipelinesLabel">
+        <property name="text">
+         <string>Pipelines:</string>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <widget class="QPushButton" name="pipelinesSelectButton">
+        <property name="text">
+         <string>Select...</string>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <widget class="QLabel" name="pipelinesCountLabel">
+        <property name="text">
+         <string>(0 selected)</string>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <spacer name="derivativesSpacer">
+        <property name="orientation">
+         <enum>Qt::Horizontal</enum>
+        </property>
+        <property name="sizeHint" stdset="0">
+         <size>
+          <width>40</width>
+          <height>20</height>
+         </size>
+        </property>
+       </spacer>
+      </item>
+     </layout>
+    </widget>
+   </item>
+   <item>
+    <widget class="QGroupBox" name="summaryGroupBox">
+     <property name="title">
+      <string>📊 Export Summary</string>
+     </property>
+     <layout class="QVBoxLayout" name="summaryLayout">
+      <item>
+       <widget class="QLabel" name="fileCountLabel">
+        <property name="text">
+         <string>Files to export: 0</string>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <widget class="QLabel" name="sizeLabel">
+        <property name="text">
+         <string>Estimated size: 0 B</string>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <widget class="QLabel" name="calculatingLabel">
+        <property name="text">
+         <string></string>
+        </property>
+        <property name="font">
+         <font>
+          <italic>true</italic>
+         </font>
+        </property>
+       </widget>
+      </item>
+     </layout>
+    </widget>
+   </item>
+   <item>
+    <widget class="QDialogButtonBox" name="buttonBox">
+     <property name="orientation">
+      <enum>Qt::Horizontal</enum>
+     </property>
+     <property name="standardButtons">
+      <set>QDialogButtonBox::Cancel</set>
+     </property>
+    </widget>
+   </item>
+  </layout>
+ </widget>
+ <resources/>
+ <connections>
+  <connection>
+   <sender>buttonBox</sender>
+   <signal>rejected()</signal>
+   <receiver>ExportDialog</receiver>
+   <slot>reject()</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>316</x>
+     <y>574</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>286</x>
+     <y>274</y>
+    </hint>
+   </hints>
+  </connection>
+ </connections>
+</ui>

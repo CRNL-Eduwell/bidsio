@@ -9,6 +9,8 @@ from dataclasses import dataclass, field
 from typing import Optional
 from pathlib import Path
 
+from .entity_config import BIDS_ENTITIES
+
 
 @dataclass
 class BIDSFile:
@@ -188,6 +190,103 @@ class BIDSDataset:
                         tasks.add(file.entities['task'])
         
         return tasks
+    
+    def get_all_entity_values(self, entity: str) -> list[str]:
+        """
+        Get all unique values for a specific BIDS entity in the dataset.
+        
+        Args:
+            entity: The entity code (e.g., 'sub', 'ses', 'task', 'run').
+            
+        Returns:
+            Sorted list of unique values for that entity.
+        """
+        values = set()
+        
+        # Special handling for 'sub' entity - extract from subject IDs
+        if entity == 'sub':
+            for subject in self.subjects:
+                values.add(subject.subject_id)
+            return sorted(values)
+        
+        # Special handling for 'ses' entity - extract from session IDs
+        if entity == 'ses':
+            for subject in self.subjects:
+                for session in subject.sessions:
+                    if session.session_id:
+                        values.add(session.session_id)
+            return sorted(values)
+        
+        # For other entities, traverse all files and extract from file entities
+        for subject in self.subjects:
+            # Check subject-level files
+            for file in subject.files:
+                if entity in file.entities:
+                    values.add(file.entities[entity])
+            
+            # Check session-level files
+            for session in subject.sessions:
+                for file in session.files:
+                    if entity in file.entities:
+                        values.add(file.entities[entity])
+        
+        return sorted(values)
+    
+    def get_all_derivative_pipelines(self) -> list[str]:
+        """
+        Get all derivative pipeline names in the dataset.
+        
+        Scans the derivatives/ folder for pipeline directories.
+        
+        Returns:
+            Sorted list of pipeline names (e.g., ['fmriprep', 'freesurfer']).
+        """
+        pipelines = []
+        derivatives_path = self.root_path / 'derivatives'
+        
+        if not derivatives_path.exists():
+            return []
+        
+        # Each subdirectory in derivatives/ is a pipeline
+        for item in derivatives_path.iterdir():
+            if item.is_dir():
+                pipelines.append(item.name)
+        
+        return sorted(pipelines)
+    
+    def get_all_entities(self) -> dict[str, list[str]]:
+        """
+        Get all entities present in the dataset with their values.
+        
+        Returns:
+            Dictionary mapping entity codes to lists of values.
+            Only includes entities that actually exist in the dataset.
+        """
+        entities_data = {}
+        
+        # Check each known BIDS entity
+        for entity_code in BIDS_ENTITIES.keys():
+            values = self.get_all_entity_values(entity_code)
+            if values:  # Only include if values exist
+                entities_data[entity_code] = values
+        
+        return entities_data
+
+
+@dataclass
+class SelectedEntities:
+    """
+    Entities selected for export.
+    
+    This represents which entity values should be included in the export.
+    Each entity maps to a list of selected values.
+    """
+    
+    entities: dict[str, list[str]] = field(default_factory=dict)
+    """Dictionary mapping entity codes to selected values (e.g., {'sub': ['01', '02'], 'task': ['rest']})."""
+    
+    derivative_pipelines: list[str] = field(default_factory=list)
+    """List of derivative pipeline names to include (e.g., ['fmriprep', 'freesurfer'])."""
 
 
 @dataclass
@@ -196,6 +295,7 @@ class FilterCriteria:
     Filtering options for selecting a subset of a BIDS dataset.
     
     All fields are optional; None means no filtering on that dimension.
+    NOTE: This class is kept for backwards compatibility but export now uses SelectedEntities.
     """
     
     subject_ids: Optional[list[str]] = None
@@ -226,18 +326,35 @@ class ExportRequest:
     source_dataset: BIDSDataset
     """The source dataset to export from."""
     
-    filter_criteria: FilterCriteria
-    """Criteria for selecting which data to export."""
+    selected_entities: SelectedEntities
+    """Entities selected for export."""
     
     output_path: Path
     """Destination directory for the exported dataset."""
     
-    copy_mode: str = "copy"
-    """How to handle files: 'copy', 'symlink', or 'hardlink'."""
+    overwrite: bool = False
+    """Whether to overwrite/merge with existing destination."""
+
+
+@dataclass
+class ExportStats:
+    """
+    Statistics about files to be exported.
+    """
     
-    include_derivatives: bool = False
-    """Whether to include derivative files."""
+    file_count: int = 0
+    """Number of files to export."""
     
-    # TODO: add option to export participants.tsv with only selected subjects
-    # TODO: add option to generate a manifest file listing exported files
-    # TODO: validate output_path is writable
+    total_size: int = 0
+    """Total size in bytes."""
+    
+    def get_size_string(self) -> str:
+        """Get human-readable size string."""
+        if self.total_size < 1024:
+            return f"{self.total_size} B"
+        elif self.total_size < 1024 ** 2:
+            return f"{self.total_size / 1024:.1f} KB"
+        elif self.total_size < 1024 ** 3:
+            return f"{self.total_size / (1024 ** 2):.1f} MB"
+        else:
+            return f"{self.total_size / (1024 ** 3):.2f} GB"

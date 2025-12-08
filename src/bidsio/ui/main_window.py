@@ -26,7 +26,8 @@ from bidsio.ui.json_viewer_dialog import JsonViewerDialog
 from bidsio.ui.table_viewer_dialog import TableViewerDialog
 from bidsio.ui.text_viewer_dialog import TextViewerDialog
 from bidsio.ui.progress_dialog import ProgressDialog
-from bidsio.ui.workers import DatasetLoaderThread
+from bidsio.ui.export_dialog import ExportDialog
+from bidsio.ui.workers import DatasetLoaderThread, ExportWorkerThread
 from bidsio.ui.widgets.details_panel import DetailsPanel
 from bidsio.ui.widgets.delegates import CompactDelegate
 from bidsio.ui.forms.main_window_ui import Ui_MainWindow
@@ -114,16 +115,22 @@ class MainWindow(QMainWindow):
         if hasattr(self.ui, 'actionPreferences'):
             self.ui.actionPreferences.triggered.connect(self.show_preferences)
         
+        # Connect export action and button
+        if hasattr(self.ui, 'actionExport'):
+            self.ui.actionExport.triggered.connect(self.export_selection)
+        
+        if hasattr(self.ui, 'exportButton'):
+            self.ui.exportButton.clicked.connect(self.export_selection)
+        
+        if hasattr(self.ui, 'filterButton'):
+            self.ui.filterButton.clicked.connect(self._show_filter_dialog)
+        
         # Connect tree widget selection
         if hasattr(self.ui, 'datasetTreeWidget'):
             self.ui.datasetTreeWidget.itemSelectionChanged.connect(self._on_tree_selection_changed)
             self.ui.datasetTreeWidget.itemDoubleClicked.connect(self._on_tree_item_double_clicked)
             self.ui.datasetTreeWidget.setItemDelegate(CompactDelegate(row_height=24, parent=self))
             self.ui.datasetTreeWidget.setUniformRowHeights(True)
-        
-        # TODO: connect toolbar buttons
-        # TODO: connect filter controls
-        # TODO: connect export action
         
         logger.debug("Signals connected")
     
@@ -365,6 +372,14 @@ class MainWindow(QMainWindow):
         # Update UI with loaded dataset
         self._update_ui()
         
+        # Enable export and filter actions now that dataset is loaded
+        if hasattr(self.ui, 'actionExport'):
+            self.ui.actionExport.setEnabled(True)
+        if hasattr(self.ui, 'exportButton'):
+            self.ui.exportButton.setEnabled(True)
+        if hasattr(self.ui, 'filterButton'):
+            self.ui.filterButton.setEnabled(True)
+        
         # Show success message
         num_subjects = len(dataset.subjects)
         dataset_name = dataset.dataset_description.get('Name', 'Unknown')
@@ -438,15 +453,109 @@ class MainWindow(QMainWindow):
     @Slot()
     def export_selection(self):
         """Export the filtered dataset subset."""
-        # TODO: show export dialog
-        # TODO: gather export parameters
-        # TODO: create ExportRequest
-        # TODO: call export function from core.export
-        # TODO: show progress dialog
-        # TODO: handle completion or errors
+        if not self._dataset:
+            QMessageBox.warning(
+                self,
+                "No Dataset",
+                "Please load a BIDS dataset before exporting."
+            )
+            return
         
-        logger.info("Exporting selection")
-        pass
+        # Show export dialog
+        dialog = ExportDialog(self._dataset, self)
+        
+        if not dialog.exec():
+            logger.debug("Export cancelled by user")
+            return
+        
+        # Get export request
+        export_request = dialog.get_export_request()
+        if not export_request:
+            logger.warning("Export request is None")
+            return
+        
+        # Create and configure progress dialog
+        progress_dialog = ProgressDialog(self)
+        progress_dialog.setWindowTitle("Exporting Dataset")
+        
+        # Create worker thread
+        self._export_worker = ExportWorkerThread(export_request)
+        self._export_worker.progress_updated.connect(
+            lambda current, total, filepath: self._on_export_progress(progress_dialog, current, total, filepath)
+        )
+        self._export_worker.export_complete.connect(
+            lambda output_path: self._on_export_complete(progress_dialog, output_path)
+        )
+        self._export_worker.export_error.connect(
+            lambda error_msg: self._on_export_error(progress_dialog, error_msg)
+        )
+        
+        # Start export
+        self._export_worker.start()
+        progress_dialog.exec()
+        
+        logger.info("Export initiated")
+    
+    def _on_export_progress(self, progress_dialog: ProgressDialog, current: int, total: int, filepath: str):
+        """Handle export progress updates."""
+        filename = Path(filepath).name
+        message = f"Copying file {current}/{total}:\n{filename}"
+        progress_dialog.update_progress(current, total, message)
+    
+    def _on_export_complete(self, progress_dialog: ProgressDialog, output_path: Path):
+        """Handle export completion."""
+        progress_dialog.accept()
+        
+        # Show success message with option to open location
+        msg_box = QMessageBox(self)
+        msg_box.setIcon(QMessageBox.Icon.Information)
+        msg_box.setWindowTitle("Export Complete")
+        msg_box.setText("Dataset export completed successfully!")
+        msg_box.setInformativeText(f"Exported to:\n{output_path}")
+        
+        open_button = msg_box.addButton("Open Location", QMessageBox.ButtonRole.ActionRole)
+        ok_button = msg_box.addButton(QMessageBox.StandardButton.Ok)
+        
+        msg_box.exec()
+        
+        # Open location if requested
+        if msg_box.clickedButton() == open_button:
+            self._open_file_location(output_path)
+        
+        logger.info(f"Export completed: {output_path}")
+    
+    def _on_export_error(self, progress_dialog: ProgressDialog, error_msg: str):
+        """Handle export error."""
+        progress_dialog.reject()
+        
+        QMessageBox.critical(
+            self,
+            "Export Error",
+            f"An error occurred during export:\n\n{error_msg}"
+        )
+        
+        logger.error(f"Export failed: {error_msg}")
+    
+    def _open_file_location(self, path: Path):
+        """Open file explorer at the given path."""
+        if os.name == 'nt':  # Windows
+            subprocess.run(['explorer', str(path)])
+        elif os.name == 'posix':  # macOS/Linux
+            if subprocess.run(['which', 'xdg-open'], capture_output=True).returncode == 0:
+                subprocess.run(['xdg-open', str(path)])
+            else:
+                subprocess.run(['open', str(path)])
+    
+    @Slot()
+    def _show_filter_dialog(self):
+        """Show the filter dialog (placeholder for future implementation)."""
+        # TODO: implement filter dialog
+        logger.info("Filter dialog not yet implemented")
+        QMessageBox.information(
+            self,
+            "Filter",
+            "Filter functionality will be implemented in a future version."
+        )
     
     def _update_ui(self):
         """Update UI with current dataset/view model state."""
