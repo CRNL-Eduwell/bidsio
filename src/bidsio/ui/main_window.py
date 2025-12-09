@@ -11,7 +11,7 @@ from typing import Optional
 from collections import Counter
 
 from PySide6.QtWidgets import QMainWindow, QFileDialog, QMessageBox, QTreeWidgetItem, QApplication
-from PySide6.QtGui import QAction, QIcon
+from PySide6.QtGui import QAction, QIcon, QColor, QBrush
 from PySide6.QtCore import Slot, Qt
 from numpy import invert
 from qt_material import apply_stylesheet
@@ -19,7 +19,11 @@ from qt_material import apply_stylesheet
 from bidsio.infrastructure.logging_config import get_logger
 from bidsio.config.settings import get_settings_manager, get_settings
 from bidsio.core.repository import BidsRepository
-from bidsio.core.models import BIDSDataset, BIDSSubject, BIDSSession, BIDSFile, BIDSDerivative, FilterCriteria
+from bidsio.core.models import (
+    BIDSDataset, BIDSSubject, BIDSSession, BIDSFile, BIDSDerivative,
+    FilterCriteria, LogicalOperation
+)
+from bidsio.core.filters import apply_filter
 from bidsio.ui.about_dialog import AboutDialog
 from bidsio.ui.preferences_dialog import PreferencesDialog
 from bidsio.ui.json_viewer_dialog import JsonViewerDialog
@@ -27,6 +31,7 @@ from bidsio.ui.table_viewer_dialog import TableViewerDialog
 from bidsio.ui.text_viewer_dialog import TextViewerDialog
 from bidsio.ui.progress_dialog import ProgressDialog
 from bidsio.ui.export_dialog import ExportDialog
+from bidsio.ui.filter_builder_dialog import FilterBuilderDialog
 from bidsio.ui.workers import DatasetLoaderThread, ExportWorkerThread
 from bidsio.ui.widgets.details_panel import DetailsPanel
 from bidsio.ui.widgets.delegates import CompactDelegate
@@ -50,7 +55,10 @@ class MainWindow(QMainWindow):
         
         self._repository: Optional[BidsRepository] = None
         self._dataset: Optional[BIDSDataset] = None
+        self._filtered_dataset: Optional[BIDSDataset] = None
+        self._active_filter: Optional[LogicalOperation] = None
         self._details_panel: Optional[DetailsPanel] = None
+        self._last_dialog_filter: Optional[LogicalOperation] = None  # Last filter state in dialog
         
         self._setup_ui()
         self._connect_signals()
@@ -124,6 +132,9 @@ class MainWindow(QMainWindow):
         
         if hasattr(self.ui, 'filterButton'):
             self.ui.filterButton.clicked.connect(self._show_filter_dialog)
+        
+        if hasattr(self.ui, 'clearFilterButton'):
+            self.ui.clearFilterButton.clicked.connect(self._clear_filter)
         
         # Connect tree widget selection
         if hasattr(self.ui, 'datasetTreeWidget'):
@@ -461,8 +472,11 @@ class MainWindow(QMainWindow):
             )
             return
         
+        # Use filtered dataset if active, otherwise use full dataset
+        export_source = self._filtered_dataset if self._filtered_dataset else self._dataset
+        
         # Show export dialog
-        dialog = ExportDialog(self._dataset, self)
+        dialog = ExportDialog(export_source, self)
         
         if not dialog.exec():
             logger.debug("Export cancelled by user")
@@ -548,14 +562,110 @@ class MainWindow(QMainWindow):
     
     @Slot()
     def _show_filter_dialog(self):
-        """Show the filter dialog (placeholder for future implementation)."""
-        # TODO: implement filter dialog
-        logger.info("Filter dialog not yet implemented")
-        QMessageBox.information(
-            self,
-            "Filter",
-            "Filter functionality will be implemented in a future version."
-        )
+        """Show the filter builder dialog."""
+        if not self._dataset:
+            QMessageBox.warning(
+                self,
+                "No Dataset",
+                "Please load a dataset first before applying filters."
+            )
+            return
+        
+        # If in lazy mode, load iEEG data before showing filter dialog
+        settings = get_settings()
+        if settings.lazy_loading and self._repository:
+            # Show progress dialog while loading iEEG data
+            progress_dialog = ProgressDialog(self)
+            progress_dialog.setWindowTitle("Loading iEEG Metadata")
+            progress_dialog.update_progress(0, 100, "Loading channel and electrode data for filtering...")
+            progress_dialog.show()
+            QApplication.processEvents()
+            
+            try:
+                def progress_callback(current, total, message):
+                    progress_dialog.update_progress(current, total, message)
+                    QApplication.processEvents()
+                
+                self._repository.load_ieeg_data_for_all_subjects(progress_callback)
+                progress_dialog.close()
+            except Exception as e:
+                progress_dialog.close()
+                logger.error(f"Failed to load iEEG data: {e}", exc_info=True)
+                QMessageBox.warning(
+                    self,
+                    "Warning",
+                    f"Failed to load some iEEG metadata:\n{str(e)}\n\nFiltering will continue with available data."
+                )
+        
+        # Show filter builder dialog with last dialog state (not active filter)
+        # This ensures dialog state persists even if filter was cleared from main window
+        dialog = FilterBuilderDialog(self._dataset, self._last_dialog_filter, self)
+        if dialog.exec() == FilterBuilderDialog.DialogCode.Accepted:
+            filter_expr = dialog.get_filter_expression()
+            # Update last dialog state
+            self._last_dialog_filter = filter_expr
+            if filter_expr:
+                self._apply_filter(filter_expr)
+            else:
+                # No filter expression means show all subjects
+                self._clear_filter()
+    
+    def _apply_filter(self, filter_expr: LogicalOperation):
+        """
+        Apply a filter expression to the dataset.
+        
+        Args:
+            filter_expr: The filter expression to apply.
+        """
+        if not self._dataset:
+            return
+        
+        try:
+            # Apply filter to get filtered dataset
+            self._filtered_dataset = apply_filter(self._dataset, filter_expr)
+            self._active_filter = filter_expr
+            
+            # Update tree view with gray-out
+            self._populate_tree()
+            
+            # Update status bar
+            matching_count = len(self._filtered_dataset.subjects)
+            total_count = len(self._dataset.subjects)
+            self.statusBar().showMessage(
+                f"Filter active: {matching_count} of {total_count} subjects match"
+            )
+            
+            # Enable clear filter button
+            if hasattr(self.ui, 'clearFilterButton'):
+                self.ui.clearFilterButton.setEnabled(True)
+            
+            logger.info(f"Filter applied: {matching_count}/{total_count} subjects match")
+            
+        except Exception as e:
+            logger.error(f"Failed to apply filter: {e}", exc_info=True)
+            QMessageBox.critical(
+                self,
+                "Filter Error",
+                f"Failed to apply filter:\n{str(e)}"
+            )
+    
+    def _clear_filter(self):
+        """Clear the active filter and show all subjects."""
+        self._filtered_dataset = None
+        self._active_filter = None
+        # Note: We do NOT clear _last_dialog_filter here
+        # This preserves dialog state when reopening after clearing
+        
+        # Update tree view (remove gray-out)
+        self._populate_tree()
+        
+        # Disable clear filter button
+        if hasattr(self.ui, 'clearFilterButton'):
+            self.ui.clearFilterButton.setEnabled(False)
+        
+        # Update status bar
+        self.statusBar().showMessage("Filter cleared - showing all subjects")
+        logger.info("Filter cleared")
     
     def _update_ui(self):
         """Update UI with current dataset/view model state."""
@@ -631,11 +741,21 @@ class MainWindow(QMainWindow):
             'subject_id': subject_id,
             'loaded': False
         })
+        
+        # Check if subject matches filter (if active)
+        if self._filtered_dataset:
+            subject_ids = [s.subject_id for s in self._filtered_dataset.subjects]
+            if subject_id not in subject_ids:
+                # Gray out non-matching subject
+                subject_item.setForeground(0, QBrush(QColor(150, 150, 150)))
+                subject_item.setFlags(subject_item.flags() & ~Qt.ItemFlag.ItemIsEnabled)
+        
         parent_item.addChild(subject_item)
         
-        # Add a dummy child so the expand arrow appears
-        dummy_item = QTreeWidgetItem(["Loading..."])
-        subject_item.addChild(dummy_item)
+        # Add a dummy child so the expand arrow appears (only if not grayed out)
+        if self._filtered_dataset is None or subject_id in [s.subject_id for s in self._filtered_dataset.subjects]:
+            dummy_item = QTreeWidgetItem(["Loading..."])
+            subject_item.addChild(dummy_item)
     
     @Slot(QTreeWidgetItem)
     def _on_tree_item_expanded(self, item: QTreeWidgetItem):
@@ -697,7 +817,22 @@ class MainWindow(QMainWindow):
         subject_item = QTreeWidgetItem([subject_text])
         subject_item.setIcon(0, QIcon(":/icons/person_icon.svg"))
         subject_item.setData(0, Qt.ItemDataRole.UserRole, {'type': 'subject', 'data': subject})
+        
+        # Check if subject matches filter (if active)
+        is_filtered_out = False
+        if self._filtered_dataset:
+            subject_ids = [s.subject_id for s in self._filtered_dataset.subjects]
+            if subject.subject_id not in subject_ids:
+                # Gray out non-matching subject
+                subject_item.setForeground(0, QBrush(QColor(150, 150, 150)))
+                subject_item.setFlags(subject_item.flags() & ~Qt.ItemFlag.ItemIsEnabled)
+                is_filtered_out = True
+        
         parent_item.addChild(subject_item)
+        
+        # Don't add children if filtered out
+        if is_filtered_out:
+            return
         
         # Add sessions if present
         if subject.sessions:

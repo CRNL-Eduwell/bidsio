@@ -1,3 +1,4 @@
+<!DOCTYPE RCC>
 <RCC>
   <qresource prefix="/">
     <file>icon.png</file>
@@ -11,5 +12,6 @@
     <file>icons/file_icon.svg</file>
     <file>icons/analytics_icon.svg</file>
     <file>icons/package_icon.svg</file>
+    <file>icons/clear_icon.svg</file>
   </qresource>
 </RCC>

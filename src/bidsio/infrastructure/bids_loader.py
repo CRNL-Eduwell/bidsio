@@ -16,9 +16,11 @@ from ..core.models import (
     BIDSSubject,
     BIDSSession,
     BIDSFile,
-    BIDSDerivative
+    BIDSDerivative,
+    IEEGData
 )
 from .logging_config import get_logger
+from .tsv_loader import load_tsv_file, find_ieeg_tsv_files
 
 logger = get_logger(__name__)
 
@@ -361,13 +363,17 @@ class BidsLoader:
             # Scan derivatives for this subject (if derivatives folder exists)
             derivatives = self._scan_subject_derivatives(subject_id, eager_load_metadata)
             
+            # Load iEEG-specific data (channels and electrodes TSV files)
+            ieeg_data = self._load_ieeg_data(subject_dir)
+            
             # Create subject object
             subject = BIDSSubject(
                 subject_id=subject_id,
                 sessions=sessions,
                 files=subject_files,
                 derivatives=derivatives,
-                metadata=metadata
+                metadata=metadata,
+                ieeg_data=ieeg_data
             )
             
             subjects.append(subject)
@@ -678,6 +684,46 @@ class BidsLoader:
         """
         # Reuse the existing _scan_files method as derivatives follow BIDS structure
         return self._scan_files(path, eager_load_metadata)
+    
+    def _load_ieeg_data(self, subject_path: Path) -> Optional[IEEGData]:
+        """
+        Load iEEG-specific TSV data (channels and electrodes) for a subject.
+        
+        This method scans the subject directory and all subdirectories for
+        _channels.tsv and _electrodes.tsv files and loads their contents.
+        
+        Args:
+            subject_path: Path to the subject directory.
+            
+        Returns:
+            IEEGData object if iEEG TSV files found, None otherwise.
+        """
+        # Find all channels and electrodes TSV files
+        channels_files = find_ieeg_tsv_files(subject_path, 'channels')
+        electrodes_files = find_ieeg_tsv_files(subject_path, 'electrodes')
+        
+        # If no iEEG TSV files found, return None
+        if not channels_files and not electrodes_files:
+            return None
+        
+        # Create IEEGData container
+        ieeg_data = IEEGData()
+        
+        # Load all channels files
+        for channels_file in channels_files:
+            channels_data = load_tsv_file(channels_file)
+            if channels_data:
+                ieeg_data.channels[channels_file] = channels_data
+                logger.debug(f"Loaded {len(channels_data)} channels from {channels_file.name}")
+        
+        # Load all electrodes files
+        for electrodes_file in electrodes_files:
+            electrodes_data = load_tsv_file(electrodes_file)
+            if electrodes_data:
+                ieeg_data.electrodes[electrodes_file] = electrodes_data
+                logger.debug(f"Loaded {len(electrodes_data)} electrodes from {electrodes_file.name}")
+        
+        return ieeg_data if (ieeg_data.channels or ieeg_data.electrodes) else None
 
 
 def is_bids_dataset(path: Path) -> bool:

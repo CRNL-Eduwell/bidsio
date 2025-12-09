@@ -94,6 +94,48 @@ class BIDSSession:
 
 
 @dataclass
+class IEEGData:
+    """
+    Container for iEEG-specific TSV data (channels and electrodes).
+    
+    This class stores the relationship between iEEG data files and their
+    associated _channels.tsv and _electrodes.tsv metadata files.
+    """
+    
+    channels: dict[Path, list[dict]] = field(default_factory=dict)
+    """Mapping from _channels.tsv file path to list of channel dictionaries."""
+    
+    electrodes: dict[Path, list[dict]] = field(default_factory=dict)
+    """Mapping from _electrodes.tsv file path to list of electrode dictionaries."""
+    
+    def get_all_channel_attributes(self) -> set[str]:
+        """
+        Get all unique channel attribute names across all channel files.
+        
+        Returns:
+            Set of attribute names (column headers).
+        """
+        attributes = set()
+        for channel_list in self.channels.values():
+            if channel_list:
+                attributes.update(channel_list[0].keys())
+        return attributes
+    
+    def get_all_electrode_attributes(self) -> set[str]:
+        """
+        Get all unique electrode attribute names across all electrode files.
+        
+        Returns:
+            Set of attribute names (column headers).
+        """
+        attributes = set()
+        for electrode_list in self.electrodes.values():
+            if electrode_list:
+                attributes.update(electrode_list[0].keys())
+        return attributes
+
+
+@dataclass
 class BIDSDerivative:
     """Represents a derivative pipeline for a subject."""
     
@@ -128,6 +170,9 @@ class BIDSSubject:
     
     metadata: dict[str, str] = field(default_factory=dict)
     """Participant metadata from participants.tsv (age, sex, group, etc.)."""
+    
+    ieeg_data: Optional[IEEGData] = None
+    """iEEG-specific data (channels and electrodes TSV files) if subject has iEEG data."""
     
     def get_derivative(self, pipeline_name: str) -> Optional[BIDSDerivative]:
         """
@@ -387,3 +432,462 @@ class ExportStats:
             return f"{self.total_size / (1024 ** 2):.1f} MB"
         else:
             return f"{self.total_size / (1024 ** 3):.2f} GB"
+
+
+# ============================================================================
+# Filter Condition Models
+# ============================================================================
+
+
+@dataclass
+class FilterCondition:
+    """
+    Base class for all filter conditions.
+    
+    Each filter condition must implement an evaluate() method that determines
+    whether a subject matches the condition.
+    """
+    
+    def evaluate(self, subject: BIDSSubject, dataset: BIDSDataset) -> bool:
+        """
+        Evaluate whether a subject matches this filter condition.
+        
+        Args:
+            subject: The subject to evaluate.
+            dataset: The full dataset (for context if needed).
+            
+        Returns:
+            True if the subject matches the condition, False otherwise.
+        """
+        raise NotImplementedError("Subclasses must implement evaluate()")
+    
+    def to_dict(self) -> dict:
+        """
+        Serialize filter condition to dictionary for JSON storage.
+        
+        Returns:
+            Dictionary representation of the filter condition.
+        """
+        raise NotImplementedError("Subclasses must implement to_dict()")
+    
+    @classmethod
+    def from_dict(cls, data: dict) -> 'FilterCondition':
+        """
+        Deserialize filter condition from dictionary.
+        
+        Args:
+            data: Dictionary representation of the filter condition.
+            
+        Returns:
+            FilterCondition instance.
+        """
+        raise NotImplementedError("Subclasses must implement from_dict()")
+
+
+@dataclass
+class SubjectIdFilter(FilterCondition):
+    """Filter by subject ID(s)."""
+    
+    subject_ids: list[str] = field(default_factory=list)
+    """List of subject IDs to include."""
+    
+    def evaluate(self, subject: BIDSSubject, dataset: BIDSDataset) -> bool:
+        """Check if subject ID is in the list."""
+        if not self.subject_ids:
+            return True
+        return subject.subject_id in self.subject_ids
+    
+    def to_dict(self) -> dict:
+        return {
+            'type': 'subject_id',
+            'subject_ids': self.subject_ids
+        }
+    
+    @classmethod
+    def from_dict(cls, data: dict) -> 'SubjectIdFilter':
+        return cls(subject_ids=data.get('subject_ids', []))
+
+
+@dataclass
+class ModalityFilter(FilterCondition):
+    """Filter by imaging modality."""
+    
+    modalities: list[str] = field(default_factory=list)
+    """List of modalities to include (e.g., ['ieeg', 'anat'])."""
+    
+    def evaluate(self, subject: BIDSSubject, dataset: BIDSDataset) -> bool:
+        """Check if subject has files with any of the specified modalities."""
+        if not self.modalities:
+            return True
+        
+        # Check all files in subject
+        for file in subject.files:
+            if file.modality in self.modalities:
+                return True
+        
+        # Check all files in sessions
+        for session in subject.sessions:
+            for file in session.files:
+                if file.modality in self.modalities:
+                    return True
+        
+        return False
+    
+    def to_dict(self) -> dict:
+        return {
+            'type': 'modality',
+            'modalities': self.modalities
+        }
+    
+    @classmethod
+    def from_dict(cls, data: dict) -> 'ModalityFilter':
+        return cls(modalities=data.get('modalities', []))
+
+
+@dataclass
+class ParticipantAttributeFilter(FilterCondition):
+    """Filter by participant metadata from participants.tsv."""
+    
+    attribute_name: str = ''
+    """Name of the attribute to filter on (e.g., 'age', 'sex', 'group')."""
+    
+    operator: str = 'equals'
+    """Comparison operator: 'equals', 'contains', 'greater_than', 'less_than', 'not_equals'."""
+    
+    value: str | int | float = ''
+    """Value to compare against."""
+    
+    def evaluate(self, subject: BIDSSubject, dataset: BIDSDataset) -> bool:
+        """Check if participant attribute matches the condition."""
+        if not self.attribute_name or self.value == '':
+            return True
+        
+        # Get attribute value from subject metadata
+        attr_value = subject.metadata.get(self.attribute_name)
+        if attr_value is None:
+            return False
+        
+        # Convert to appropriate type for comparison
+        try:
+            if self.operator in ['greater_than', 'less_than']:
+                attr_value = float(attr_value)
+                compare_value = float(self.value)
+            else:
+                attr_value = str(attr_value)
+                compare_value = str(self.value)
+        except (ValueError, TypeError):
+            return False
+        
+        # Apply operator
+        if self.operator == 'equals':
+            return attr_value == compare_value
+        elif self.operator == 'not_equals':
+            return attr_value != compare_value
+        elif self.operator == 'contains':
+            # Type narrowing: contains only works with strings
+            return isinstance(compare_value, str) and isinstance(attr_value, str) and compare_value in attr_value
+        elif self.operator == 'greater_than':
+            # Type narrowing: comparison only works with numbers
+            return isinstance(attr_value, (int, float)) and isinstance(compare_value, (int, float)) and attr_value > compare_value
+        elif self.operator == 'less_than':
+            # Type narrowing: comparison only works with numbers
+            return isinstance(attr_value, (int, float)) and isinstance(compare_value, (int, float)) and attr_value < compare_value
+        else:
+            return False
+    
+    def to_dict(self) -> dict:
+        return {
+            'type': 'participant_attribute',
+            'attribute_name': self.attribute_name,
+            'operator': self.operator,
+            'value': self.value
+        }
+    
+    @classmethod
+    def from_dict(cls, data: dict) -> 'ParticipantAttributeFilter':
+        return cls(
+            attribute_name=data.get('attribute_name', ''),
+            operator=data.get('operator', 'equals'),
+            value=data.get('value', '')
+        )
+
+
+@dataclass
+class EntityFilter(FilterCondition):
+    """Filter by BIDS entity value."""
+    
+    entity_code: str = ''
+    """Entity code (e.g., 'task', 'run', 'ses')."""
+    
+    values: list[str] = field(default_factory=list)
+    """List of entity values to include (e.g., ['VISU', 'REST'])."""
+    
+    def evaluate(self, subject: BIDSSubject, dataset: BIDSDataset) -> bool:
+        """Check if subject has files with any of the specified entity values."""
+        if not self.entity_code or not self.values:
+            return True
+        
+        # Special handling for 'ses' entity
+        if self.entity_code == 'ses':
+            for session in subject.sessions:
+                if session.session_id in self.values:
+                    return True
+            return False
+        
+        # Check all files in subject
+        for file in subject.files:
+            if self.entity_code in file.entities and file.entities[self.entity_code] in self.values:
+                return True
+        
+        # Check all files in sessions
+        for session in subject.sessions:
+            for file in session.files:
+                if self.entity_code in file.entities and file.entities[self.entity_code] in self.values:
+                    return True
+        
+        return False
+    
+    def to_dict(self) -> dict:
+        return {
+            'type': 'entity',
+            'entity_code': self.entity_code,
+            'values': self.values
+        }
+    
+    @classmethod
+    def from_dict(cls, data: dict) -> 'EntityFilter':
+        return cls(
+            entity_code=data.get('entity_code', ''),
+            values=data.get('values', [])
+        )
+
+
+@dataclass
+class ChannelAttributeFilter(FilterCondition):
+    """Filter by iEEG channel attributes (_channels.tsv)."""
+    
+    attribute_name: str = ''
+    """Name of the channel attribute to filter on (e.g., 'low_cutoff', 'high_cutoff', 'type')."""
+    
+    operator: str = 'equals'
+    """Comparison operator: 'equals', 'contains', 'greater_than', 'less_than', 'not_equals'."""
+    
+    value: str | int | float = ''
+    """Value to compare against."""
+    
+    def evaluate(self, subject: BIDSSubject, dataset: BIDSDataset) -> bool:
+        """Check if any iEEG file has channels matching the criteria."""
+        if not self.attribute_name or self.value == '':
+            return True
+        
+        # Check if subject has iEEG data
+        if not subject.ieeg_data or not subject.ieeg_data.channels:
+            return False
+        
+        # Check all channel files
+        for channel_list in subject.ieeg_data.channels.values():
+            for channel in channel_list:
+                if self.attribute_name not in channel:
+                    continue
+                
+                attr_value = channel[self.attribute_name]
+                
+                # Convert to appropriate type for comparison
+                try:
+                    if self.operator in ['greater_than', 'less_than']:
+                        attr_value = float(attr_value)
+                        compare_value = float(self.value)
+                    else:
+                        attr_value = str(attr_value)
+                        compare_value = str(self.value)
+                except (ValueError, TypeError):
+                    continue
+                
+                # Apply operator
+                match = False
+                if self.operator == 'equals':
+                    match = attr_value == compare_value
+                elif self.operator == 'not_equals':
+                    match = attr_value != compare_value
+                elif self.operator == 'contains':
+                    # Type narrowing: contains only works with strings
+                    match = isinstance(compare_value, str) and isinstance(attr_value, str) and compare_value in attr_value
+                elif self.operator == 'greater_than':
+                    # Type narrowing: comparison only works with numbers
+                    match = isinstance(attr_value, (int, float)) and isinstance(compare_value, (int, float)) and attr_value > compare_value
+                elif self.operator == 'less_than':
+                    # Type narrowing: comparison only works with numbers
+                    match = isinstance(attr_value, (int, float)) and isinstance(compare_value, (int, float)) and attr_value < compare_value
+                
+                if match:
+                    return True
+        
+        return False
+    
+    def to_dict(self) -> dict:
+        return {
+            'type': 'channel_attribute',
+            'attribute_name': self.attribute_name,
+            'operator': self.operator,
+            'value': self.value
+        }
+    
+    @classmethod
+    def from_dict(cls, data: dict) -> 'ChannelAttributeFilter':
+        return cls(
+            attribute_name=data.get('attribute_name', ''),
+            operator=data.get('operator', 'equals'),
+            value=data.get('value', '')
+        )
+
+
+@dataclass
+class ElectrodeAttributeFilter(FilterCondition):
+    """Filter by iEEG electrode attributes (_electrodes.tsv)."""
+    
+    attribute_name: str = ''
+    """Name of the electrode attribute to filter on (e.g., 'material', 'manufacturer', 'x', 'y', 'z')."""
+    
+    operator: str = 'equals'
+    """Comparison operator: 'equals', 'contains', 'greater_than', 'less_than', 'not_equals'."""
+    
+    value: str | int | float = ''
+    """Value to compare against."""
+    
+    def evaluate(self, subject: BIDSSubject, dataset: BIDSDataset) -> bool:
+        """Check if any iEEG file has electrodes matching the criteria."""
+        if not self.attribute_name or self.value == '':
+            return True
+        
+        # Check if subject has iEEG data
+        if not subject.ieeg_data or not subject.ieeg_data.electrodes:
+            return False
+        
+        # Check all electrode files
+        for electrode_list in subject.ieeg_data.electrodes.values():
+            for electrode in electrode_list:
+                if self.attribute_name not in electrode:
+                    continue
+                
+                attr_value = electrode[self.attribute_name]
+                
+                # Convert to appropriate type for comparison
+                try:
+                    if self.operator in ['greater_than', 'less_than']:
+                        attr_value = float(attr_value)
+                        compare_value = float(self.value)
+                    else:
+                        attr_value = str(attr_value)
+                        compare_value = str(self.value)
+                except (ValueError, TypeError):
+                    continue
+                
+                # Apply operator
+                match = False
+                if self.operator == 'equals':
+                    match = attr_value == compare_value
+                elif self.operator == 'not_equals':
+                    match = attr_value != compare_value
+                elif self.operator == 'contains':
+                    # Type narrowing: contains only works with strings
+                    match = isinstance(compare_value, str) and isinstance(attr_value, str) and compare_value in attr_value
+                elif self.operator == 'greater_than':
+                    # Type narrowing: comparison only works with numbers
+                    match = isinstance(attr_value, (int, float)) and isinstance(compare_value, (int, float)) and attr_value > compare_value
+                elif self.operator == 'less_than':
+                    # Type narrowing: comparison only works with numbers
+                    match = isinstance(attr_value, (int, float)) and isinstance(compare_value, (int, float)) and attr_value < compare_value
+                
+                if match:
+                    return True
+        
+        return False
+    
+    def to_dict(self) -> dict:
+        return {
+            'type': 'electrode_attribute',
+            'attribute_name': self.attribute_name,
+            'operator': self.operator,
+            'value': self.value
+        }
+    
+    @classmethod
+    def from_dict(cls, data: dict) -> 'ElectrodeAttributeFilter':
+        return cls(
+            attribute_name=data.get('attribute_name', ''),
+            operator=data.get('operator', 'equals'),
+            value=data.get('value', '')
+        )
+
+
+@dataclass
+class LogicalOperation:
+    """
+    Logical combination of filter conditions.
+    
+    Supports AND, OR, and NOT operations for composing complex filters.
+    """
+    
+    operator: str = 'AND'
+    """Logical operator: 'AND', 'OR', 'NOT'."""
+    
+    conditions: list['FilterCondition | LogicalOperation'] = field(default_factory=list)
+    """List of child conditions or nested logical operations."""
+    
+    def evaluate(self, subject: BIDSSubject, dataset: BIDSDataset) -> bool:
+        """Evaluate the logical operation recursively."""
+        if not self.conditions:
+            return True
+        
+        if self.operator == 'AND':
+            return all(cond.evaluate(subject, dataset) for cond in self.conditions)
+        elif self.operator == 'OR':
+            return any(cond.evaluate(subject, dataset) for cond in self.conditions)
+        elif self.operator == 'NOT':
+            # NOT operates on the first condition only
+            if self.conditions:
+                return not self.conditions[0].evaluate(subject, dataset)
+            return True
+        else:
+            return False
+    
+    def to_dict(self) -> dict:
+        return {
+            'type': 'logical_operation',
+            'operator': self.operator,
+            'conditions': [cond.to_dict() for cond in self.conditions]
+        }
+    
+    @classmethod
+    def from_dict(cls, data: dict) -> 'LogicalOperation':
+        """
+        Deserialize logical operation from dictionary.
+        
+        Args:
+            data: Dictionary representation.
+            
+        Returns:
+            LogicalOperation instance.
+        """
+        conditions = []
+        for cond_data in data.get('conditions', []):
+            cond_type = cond_data.get('type')
+            if cond_type == 'subject_id':
+                conditions.append(SubjectIdFilter.from_dict(cond_data))
+            elif cond_type == 'modality':
+                conditions.append(ModalityFilter.from_dict(cond_data))
+            elif cond_type == 'participant_attribute':
+                conditions.append(ParticipantAttributeFilter.from_dict(cond_data))
+            elif cond_type == 'entity':
+                conditions.append(EntityFilter.from_dict(cond_data))
+            elif cond_type == 'channel_attribute':
+                conditions.append(ChannelAttributeFilter.from_dict(cond_data))
+            elif cond_type == 'electrode_attribute':
+                conditions.append(ElectrodeAttributeFilter.from_dict(cond_data))
+            elif cond_type == 'logical_operation':
+                conditions.append(LogicalOperation.from_dict(cond_data))
+        
+        return cls(
+            operator=data.get('operator', 'AND'),
+            conditions=conditions
+        )

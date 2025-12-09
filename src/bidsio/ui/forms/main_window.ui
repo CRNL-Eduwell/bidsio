@@ -97,6 +97,20 @@
            </widget>
           </item>
           <item>
+           <widget class="QPushButton" name="clearFilterButton">
+            <property name="text">
+             <string>Clear Filter</string>
+            </property>
+            <property name="icon">
+             <iconset resource="../resources/resources.qrc">
+              <normaloff>:/icons/clear_icon.svg</normaloff>:/icons/clear_icon.svg</iconset>
+            </property>
+            <property name="enabled">
+             <bool>false</bool>
+            </property>
+           </widget>
+          </item>
+          <item>
            <widget class="QPushButton" name="exportButton">
             <property name="text">
              <string>Export...</string>

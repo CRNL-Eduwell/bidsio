@@ -167,3 +167,36 @@ class BidsRepository:
         # TODO: include counts for subjects, sessions, runs
         # TODO: include unique tasks, modalities
         raise NotImplementedError("get_summary_statistics is not implemented yet.")
+    
+    def load_ieeg_data_for_all_subjects(self, progress_callback: Optional[Callable[[int, int, str], None]] = None):
+        """
+        Load iEEG TSV data for all subjects in the dataset.
+        
+        This is useful for lazy-loaded datasets when filtering is about to be applied.
+        For eager-loaded datasets, this is a no-op as iEEG data is already loaded.
+        
+        Args:
+            progress_callback: Optional callback function(current, total, message) for progress updates.
+        """
+        if self._dataset is None or self._loader is None:
+            return
+        
+        # If not lazy loaded, iEEG data is already loaded
+        if not self._is_lazy_loaded:
+            return
+        
+        total_subjects = len(self._dataset.subjects)
+        
+        for idx, subject in enumerate(self._dataset.subjects):
+            # Skip if iEEG data already loaded for this subject
+            if subject.ieeg_data is not None:
+                continue
+            
+            # Report progress
+            if progress_callback:
+                progress_callback(idx + 1, total_subjects, f"Loading iEEG data for subject: {subject.subject_id}")
+            
+            # Load iEEG data
+            subject_path = self.root_path / f"sub-{subject.subject_id}"
+            if subject_path.exists():
+                subject.ieeg_data = self._loader._load_ieeg_data(subject_path)
