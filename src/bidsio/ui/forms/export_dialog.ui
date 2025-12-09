@@ -17,7 +17,7 @@
    <item>
     <widget class="QGroupBox" name="destinationGroupBox">
      <property name="title">
-      <string>📂 Destination</string>
+      <string>Destination</string>
      </property>
      <layout class="QHBoxLayout" name="destinationLayout">
       <item>
@@ -40,7 +40,7 @@
    <item>
     <widget class="QGroupBox" name="rawDataGroupBox">
      <property name="title">
-      <string>📋 Raw Data Selection</string>
+      <string>Raw Data Selection</string>
      </property>
      <layout class="QVBoxLayout" name="rawDataLayout">
       <item>
@@ -91,7 +91,7 @@
    <item>
     <widget class="QGroupBox" name="derivativesGroupBox">
      <property name="title">
-      <string>📊 Derivatives Selection</string>
+      <string>Derivatives Selection</string>
      </property>
      <layout class="QHBoxLayout" name="derivativesLayout">
       <item>
@@ -134,7 +134,7 @@
    <item>
     <widget class="QGroupBox" name="summaryGroupBox">
      <property name="title">
-      <string>📊 Export Summary</string>
+      <string>Export Summary</string>
      </property>
      <layout class="QVBoxLayout" name="summaryLayout">
       <item>

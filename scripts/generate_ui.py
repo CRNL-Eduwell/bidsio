@@ -20,8 +20,9 @@ import re
 def compile_resources():
     """Compile Qt resource files to Python module."""
     project_root = Path(__file__).parent.parent
-    qrc_file = project_root / "src" / "bidsio" / "ui" / "resources" / "resources.qrc"
-    output_file = project_root / "src" / "bidsio" / "ui" / "resources" / "resources_rc.py"
+    resources_dir = project_root / "src" / "bidsio" / "ui" / "resources"
+    qrc_file = resources_dir / "resources.qrc"
+    output_file = resources_dir / "resources_rc.py"
     
     if not qrc_file.exists():
         print(f"Warning: Resource file not found: {qrc_file}")
@@ -32,8 +33,10 @@ def compile_resources():
     print(f"  Output: {output_file.name}")
     
     try:
+        # Run from the resources directory so relative paths work
         subprocess.run(
-            ["pyside6-rcc", str(qrc_file), "-o", str(output_file)],
+            ["pyside6-rcc", "resources.qrc", "-o", "resources_rc.py"],
+            cwd=str(resources_dir),
             capture_output=True,
             text=True,
             check=True

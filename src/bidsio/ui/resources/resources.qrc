@@ -2,4 +2,14 @@
   <qresource prefix="/">
     <file>icon.png</file>
   </qresource>
+  <qresource prefix="/">
+    <file>icons/filter_icon.svg</file>
+    <file>icons/export_icon.svg</file>
+    <file>icons/folder_icon.svg</file>
+    <file>icons/person_icon.svg</file>
+    <file>icons/folder_open_icon.svg</file>
+    <file>icons/file_icon.svg</file>
+    <file>icons/analytics_icon.svg</file>
+    <file>icons/package_icon.svg</file>
+  </qresource>
 </RCC>

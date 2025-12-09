@@ -85,7 +85,11 @@
           <item>
            <widget class="QPushButton" name="filterButton">
             <property name="text">
-             <string>🔍 Filter...</string>
+             <string>Filter...</string>
+            </property>
+            <property name="icon">
+             <iconset resource="../resources/resources.qrc">
+              <normaloff>:/icons/filter_icon.svg</normaloff>:/icons/filter_icon.svg</iconset>
             </property>
             <property name="enabled">
              <bool>false</bool>
@@ -95,7 +99,11 @@
           <item>
            <widget class="QPushButton" name="exportButton">
             <property name="text">
-             <string>📤 Export...</string>
+             <string>Export...</string>
+            </property>
+            <property name="icon">
+             <iconset resource="../resources/resources.qrc">
+              <normaloff>:/icons/export_icon.svg</normaloff>:/icons/export_icon.svg</iconset>
             </property>
             <property name="enabled">
              <bool>false</bool>

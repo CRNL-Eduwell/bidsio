@@ -11,7 +11,7 @@ from typing import Optional
 from collections import Counter
 
 from PySide6.QtWidgets import QMainWindow, QFileDialog, QMessageBox, QTreeWidgetItem, QApplication
-from PySide6.QtGui import QAction
+from PySide6.QtGui import QAction, QIcon
 from PySide6.QtCore import Slot, Qt
 from numpy import invert
 from qt_material import apply_stylesheet
@@ -584,7 +584,8 @@ class MainWindow(QMainWindow):
         
         # Create root item for dataset
         dataset_name = self._dataset.dataset_description.get('Name', 'BIDS Dataset')
-        root_item = QTreeWidgetItem([f"📁 {dataset_name}"])
+        root_item = QTreeWidgetItem([dataset_name])
+        root_item.setIcon(0, QIcon(":/icons/folder_icon.svg"))
         root_item.setData(0, Qt.ItemDataRole.UserRole, {'type': 'dataset', 'data': self._dataset})
         tree.addTopLevelItem(root_item)
         
@@ -622,8 +623,9 @@ class MainWindow(QMainWindow):
             parent_item: Parent tree item.
             subject_id: Subject identifier.
         """
-        subject_text = f"🧍 sub-{subject_id}"
+        subject_text = f"sub-{subject_id}"
         subject_item = QTreeWidgetItem([subject_text])
+        subject_item.setIcon(0, QIcon(":/icons/person_icon.svg"))
         subject_item.setData(0, Qt.ItemDataRole.UserRole, {
             'type': 'subject_stub', 
             'subject_id': subject_id,
@@ -690,9 +692,10 @@ class MainWindow(QMainWindow):
     def _add_subject_to_tree(self, parent_item: QTreeWidgetItem, subject: BIDSSubject):
         """Add a subject and its contents to the tree."""
         # Create subject item
-        subject_text = f"🧍 sub-{subject.subject_id}"
+        subject_text = f"sub-{subject.subject_id}"
         
         subject_item = QTreeWidgetItem([subject_text])
+        subject_item.setIcon(0, QIcon(":/icons/person_icon.svg"))
         subject_item.setData(0, Qt.ItemDataRole.UserRole, {'type': 'subject', 'data': subject})
         parent_item.addChild(subject_item)
         
@@ -706,7 +709,8 @@ class MainWindow(QMainWindow):
         
         # Add derivatives section if present
         if subject.derivatives:
-            derivatives_item = QTreeWidgetItem(["📊 derivatives"])
+            derivatives_item = QTreeWidgetItem(["derivatives"])
+            derivatives_item.setIcon(0, QIcon(":/icons/analytics_icon.svg"))
             derivatives_item.setData(0, Qt.ItemDataRole.UserRole, {
                 'type': 'derivatives_folder', 
                 'data': subject
@@ -718,8 +722,9 @@ class MainWindow(QMainWindow):
     
     def _add_session_to_tree(self, parent_item: QTreeWidgetItem, session: BIDSSession):
         """Add a session and its contents to the tree."""
-        session_text = f"📂 ses-{session.session_id}"
+        session_text = f"ses-{session.session_id}"
         session_item = QTreeWidgetItem([session_text])
+        session_item.setIcon(0, QIcon(":/icons/folder_open_icon.svg"))
         session_item.setData(0, Qt.ItemDataRole.UserRole, {'type': 'session', 'data': session})
         parent_item.addChild(session_item)
         
@@ -738,8 +743,9 @@ class MainWindow(QMainWindow):
         
         # Add modality folders
         for modality, modality_files in sorted(modalities.items()):
-            modality_text = f"📂 {modality}"
+            modality_text = f"{modality}"
             modality_item = QTreeWidgetItem([modality_text])
+            modality_item.setIcon(0, QIcon(":/icons/folder_open_icon.svg"))
             modality_item.setData(0, Qt.ItemDataRole.UserRole, {
                 'type': 'modality', 
                 'data': {'modality': modality, 'files': modality_files}
@@ -752,8 +758,9 @@ class MainWindow(QMainWindow):
     
     def _add_file_to_tree(self, parent_item: QTreeWidgetItem, file: BIDSFile):
         """Add a file to the tree."""
-        file_text = f"📄 {file.path.name}"
+        file_text = f"{file.path.name}"
         file_item = QTreeWidgetItem([file_text])
+        file_item.setIcon(0, QIcon(":/icons/file_icon.svg"))
         file_item.setData(0, Qt.ItemDataRole.UserRole, {'type': 'file', 'data': file})
         parent_item.addChild(file_item)
     
@@ -766,8 +773,9 @@ class MainWindow(QMainWindow):
             derivative: The BIDSDerivative to add.
             subject_id: The subject ID (for context).
         """
-        pipeline_text = f"📦 {derivative.pipeline_name}"
+        pipeline_text = f"{derivative.pipeline_name}"
         pipeline_item = QTreeWidgetItem([pipeline_text])
+        pipeline_item.setIcon(0, QIcon(":/icons/package_icon.svg"))
         pipeline_item.setData(0, Qt.ItemDataRole.UserRole, {
             'type': 'derivative',
             'data': derivative,
@@ -797,8 +805,9 @@ class MainWindow(QMainWindow):
         parent_data = parent_item.data(0, Qt.ItemDataRole.UserRole)
         pipeline_name = parent_data.get('data').pipeline_name if parent_data and 'data' in parent_data else 'unknown'
         
-        session_text = f"📂 ses-{session.session_id}"
+        session_text = f"ses-{session.session_id}"
         session_item = QTreeWidgetItem([session_text])
+        session_item.setIcon(0, QIcon(":/icons/folder_open_icon.svg"))
         session_item.setData(0, Qt.ItemDataRole.UserRole, {
             'type': 'derivative_session',
             'data': {'session': session, 'pipeline_name': pipeline_name}

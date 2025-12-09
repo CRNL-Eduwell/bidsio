@@ -68,6 +68,18 @@ You are assisting in developing **bidsio**, a Python desktop application for exp
    - Use typed dataclasses or Pydantic models for data
    - All operations should be testable in isolation
 
+6. **Icons and Visual Elements**
+   - **NEVER use emoji characters in UI code** (🔍, 📤, 📁, etc.)
+   - Emojis cause Unicode encoding issues with PySide6 on Windows with Python 3.13
+   - **Always use Qt icons from SVG resources instead**
+   - Icons are stored in `src/bidsio/ui/resources/icons/` and registered in `resources.qrc`
+   - Use Material Design icons from https://fonts.google.com/icons
+   - Reference icons with `QIcon(":/icons/icon_name.svg")`
+   - For buttons in `.ui` files, set the `icon` property to reference the resource
+   - For tree items, use `item.setIcon(0, QIcon(":/icons/icon_name.svg"))`
+   - After adding new icons, always run `python scripts/generate_ui.py` to recompile resources
+   - Always remind the user to get icons with the "Fill" and "Outlined" styles for best appearance
+
 ## Project Structure
 
 ```
