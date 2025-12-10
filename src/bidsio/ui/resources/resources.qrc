@@ -13,5 +13,23 @@
     <file>icons/analytics_icon.svg</file>
     <file>icons/package_icon.svg</file>
     <file>icons/clear_icon.svg</file>
+    <file>icons/and_icon.svg</file>
+    <file>icons/or_icon.svg</file>
+    <file>icons/not_icon.svg</file>
+    <file>icons/id_icon.svg</file>
+    <file>icons/label_icon.svg</file>
+    <file>icons/participant_attribute_icon.svg</file>
+    <file>icons/channel_attribute_icon.svg</file>
+    <file>icons/electrode_attribute_icon.svg</file>
+    <file>icons/add_icon.svg</file>
+    <file>icons/delete_icon.svg</file>
+    <file>icons/move_up_icon.svg</file>
+    <file>icons/move_down_icon.svg</file>
+    <file>icons/copy_icon.svg</file>
+    <file>icons/cut_icon.svg</file>
+    <file>icons/paste_icon.svg</file>
+    <file>icons/valid_icon.svg</file>
+    <file>icons/error_icon.svg</file>
+    <file>icons/help_icon.svg</file>
   </qresource>
 </RCC>

@@ -76,32 +76,543 @@
       <attribute name="title">
        <string>Advanced</string>
       </attribute>
-      <layout class="QVBoxLayout" name="verticalLayout_3">
+      <layout class="QHBoxLayout" name="advancedLayout">
        <item>
-        <widget class="QLabel" name="advancedInfoLabel">
-         <property name="text">
-          <string>Advanced filtering with logical operations (AND, OR, NOT) - Coming soon!</string>
-         </property>
+        <widget class="QWidget" name="treePanel" native="true">
+         <layout class="QVBoxLayout" name="treePanelLayout">
+          <property name="spacing">
+           <number>6</number>
+          </property>
+          <property name="leftMargin">
+           <number>0</number>
+          </property>
+          <property name="topMargin">
+           <number>0</number>
+          </property>
+          <property name="rightMargin">
+           <number>0</number>
+          </property>
+          <property name="bottomMargin">
+           <number>0</number>
+          </property>
+          <item>
+           <widget class="QToolBar" name="treeToolBar">
+            <property name="movable">
+             <bool>false</bool>
+            </property>
+            <property name="iconSize">
+             <size>
+              <width>20</width>
+              <height>20</height>
+             </size>
+            </property>
+            <property name="floatable">
+             <bool>false</bool>
+            </property>
+            <addaction name="actionAddCondition"/>
+            <addaction name="actionAddGroup"/>
+            <addaction name="separator"/>
+            <addaction name="actionDelete"/>
+            <addaction name="separator"/>
+            <addaction name="actionMoveUp"/>
+            <addaction name="actionMoveDown"/>
+            <addaction name="separator"/>
+            <addaction name="actionCut"/>
+            <addaction name="actionCopy"/>
+            <addaction name="actionPaste"/>
+           </widget>
+          </item>
+          <item>
+           <widget class="QTreeWidget" name="filterTreeWidget">
+            <property name="contextMenuPolicy">
+             <enum>Qt::CustomContextMenu</enum>
+            </property>
+            <property name="selectionMode">
+             <enum>QAbstractItemView::SingleSelection</enum>
+            </property>
+            <property name="headerHidden">
+             <bool>true</bool>
+            </property>
+            <column>
+             <property name="text">
+              <string>Filter Structure</string>
+             </property>
+            </column>
+           </widget>
+          </item>
+         </layout>
         </widget>
        </item>
        <item>
-        <widget class="QTextEdit" name="advancedPlaceholder">
-         <property name="enabled">
-          <bool>false</bool>
-         </property>
-         <property name="html">
-          <string>&lt;!DOCTYPE HTML PUBLIC &quot;-//W3C//DTD HTML 4.0//EN&quot; &quot;http://www.w3.org/TR/REC-html40/strict.dtd&quot;&gt;
-&lt;html&gt;&lt;head&gt;&lt;meta name=&quot;qrichtext&quot; content=&quot;1&quot; /&gt;&lt;style type=&quot;text/css&quot;&gt;
-p, li { white-space: pre-wrap; }
-&lt;/style&gt;&lt;/head&gt;&lt;body style=&quot; font-family:'Segoe UI'; font-size:9pt; font-weight:400; font-style:normal;&quot;&gt;
-&lt;p style=&quot; margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;&quot;&gt;TODO: Implement advanced filter builder with:&lt;/p&gt;
-&lt;p style=&quot;-qt-paragraph-type:empty; margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;&quot;&gt;&lt;br /&gt;&lt;/p&gt;
-&lt;p style=&quot; margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;&quot;&gt;- Tree view for nested logical operations&lt;/p&gt;
-&lt;p style=&quot; margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;&quot;&gt;- AND/OR/NOT grouping buttons&lt;/p&gt;
-&lt;p style=&quot; margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;&quot;&gt;- Drag and drop condition reordering&lt;/p&gt;
-&lt;p style=&quot; margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;&quot;&gt;- Condition editor panel&lt;/p&gt;
-&lt;p style=&quot; margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;&quot;&gt;- Visual representation of filter logic&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
-         </property>
+        <widget class="QWidget" name="editorPanel" native="true">
+         <layout class="QVBoxLayout" name="editorPanelLayout">
+          <property name="spacing">
+           <number>12</number>
+          </property>
+          <property name="leftMargin">
+           <number>0</number>
+          </property>
+          <property name="topMargin">
+           <number>0</number>
+          </property>
+          <property name="rightMargin">
+           <number>0</number>
+          </property>
+          <property name="bottomMargin">
+           <number>0</number>
+          </property>
+          <item>
+           <widget class="QLabel" name="editorTitleLabel">
+            <property name="font">
+             <font>
+              <pointsize>10</pointsize>
+              <weight>75</weight>
+              <bold>true</bold>
+             </font>
+            </property>
+            <property name="text">
+             <string>Condition Editor</string>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QStackedWidget" name="editorStackedWidget">
+            <property name="currentIndex">
+             <number>0</number>
+            </property>
+            <widget class="QWidget" name="emptyEditorPage">
+             <layout class="QVBoxLayout" name="emptyEditorLayout">
+              <item>
+               <spacer name="emptyTopSpacer">
+                <property name="orientation">
+                 <enum>Qt::Vertical</enum>
+                </property>
+                <property name="sizeHint" stdset="0">
+                 <size>
+                  <width>20</width>
+                  <height>40</height>
+                 </size>
+                </property>
+               </spacer>
+              </item>
+              <item>
+               <widget class="QLabel" name="emptyEditorLabel">
+                <property name="text">
+                 <string>Select an item in the tree to edit,
+or click 'Add Condition' or 'Add Group'
+to start building your filter.</string>
+                </property>
+                <property name="alignment">
+                 <set>Qt::AlignCenter</set>
+                </property>
+                <property name="wordWrap">
+                 <bool>true</bool>
+                </property>
+               </widget>
+              </item>
+              <item>
+               <spacer name="emptyBottomSpacer">
+                <property name="orientation">
+                 <enum>Qt::Vertical</enum>
+                </property>
+                <property name="sizeHint" stdset="0">
+                 <size>
+                  <width>20</width>
+                  <height>40</height>
+                 </size>
+                </property>
+               </spacer>
+              </item>
+             </layout>
+            </widget>
+            <widget class="QWidget" name="logicalEditorPage">
+             <layout class="QFormLayout" name="logicalEditorLayout">
+              <item row="0" column="0">
+               <widget class="QLabel" name="logicalOperatorLabel">
+                <property name="text">
+                 <string>Logical Operator:</string>
+                </property>
+               </widget>
+              </item>
+              <item row="0" column="1">
+               <widget class="QComboBox" name="logicalOperatorComboBox">
+                <item>
+                 <property name="text">
+                  <string>AND</string>
+                 </property>
+                </item>
+                <item>
+                 <property name="text">
+                  <string>OR</string>
+                 </property>
+                </item>
+                <item>
+                 <property name="text">
+                  <string>NOT</string>
+                 </property>
+                </item>
+               </widget>
+              </item>
+              <item row="1" column="0" colspan="2">
+               <widget class="QLabel" name="logicalDescriptionLabel">
+                <property name="text">
+                 <string>AND: All child conditions must match
+OR: At least one child must match
+NOT: Child condition must not match (1 child only)</string>
+                </property>
+                <property name="wordWrap">
+                 <bool>true</bool>
+                </property>
+               </widget>
+              </item>
+             </layout>
+            </widget>
+            <widget class="QWidget" name="conditionEditorPage">
+             <layout class="QFormLayout" name="conditionEditorLayout">
+              <item row="0" column="0">
+               <widget class="QLabel" name="conditionTypeLabel">
+                <property name="text">
+                 <string>Condition Type:</string>
+                </property>
+               </widget>
+              </item>
+              <item row="0" column="1">
+               <widget class="QComboBox" name="conditionTypeComboBox">
+                <item>
+                 <property name="text">
+                  <string>Subject ID</string>
+                 </property>
+                </item>
+                <item>
+                 <property name="text">
+                  <string>Modality</string>
+                 </property>
+                </item>
+                <item>
+                 <property name="text">
+                  <string>Entity</string>
+                 </property>
+                </item>
+                <item>
+                 <property name="text">
+                  <string>Participant Attribute</string>
+                 </property>
+                </item>
+                <item>
+                 <property name="text">
+                  <string>Channel Attribute</string>
+                 </property>
+                </item>
+                <item>
+                 <property name="text">
+                  <string>Electrode Attribute</string>
+                 </property>
+                </item>
+               </widget>
+              </item>
+              <item row="1" column="0" colspan="2">
+               <widget class="QStackedWidget" name="conditionDetailsStackedWidget">
+                <property name="currentIndex">
+                 <number>0</number>
+                </property>
+                <widget class="QWidget" name="subjectIdDetailsPage">
+                 <layout class="QVBoxLayout" name="subjectIdDetailsLayout">
+                  <item>
+                   <widget class="QLabel" name="subjectIdLabel">
+                    <property name="text">
+                     <string>Subject IDs (comma-separated):</string>
+                    </property>
+                   </widget>
+                  </item>
+                  <item>
+                   <widget class="QLineEdit" name="subjectIdLineEdit">
+                    <property name="placeholderText">
+                     <string>e.g., sub-01, sub-02</string>
+                    </property>
+                   </widget>
+                  </item>
+                 </layout>
+                </widget>
+                <widget class="QWidget" name="modalityDetailsPage">
+                 <layout class="QVBoxLayout" name="modalityDetailsLayout">
+                  <item>
+                   <widget class="QLabel" name="modalityLabel">
+                    <property name="text">
+                     <string>Modality:</string>
+                    </property>
+                   </widget>
+                  </item>
+                  <item>
+                   <widget class="QComboBox" name="modalityComboBox"/>
+                  </item>
+                 </layout>
+                </widget>
+                <widget class="QWidget" name="entityDetailsPage">
+                 <layout class="QVBoxLayout" name="entityDetailsLayout">
+                  <item>
+                   <widget class="QLabel" name="entityNameLabel">
+                    <property name="text">
+                     <string>Entity Name:</string>
+                    </property>
+                   </widget>
+                  </item>
+                  <item>
+                   <widget class="QComboBox" name="entityNameComboBox"/>
+                  </item>
+                  <item>
+                   <widget class="QLabel" name="entityOperatorLabel">
+                    <property name="text">
+                     <string>Operator:</string>
+                    </property>
+                   </widget>
+                  </item>
+                  <item>
+                   <widget class="QComboBox" name="entityOperatorComboBox">
+                    <item>
+                     <property name="text">
+                      <string>equals</string>
+                     </property>
+                    </item>
+                    <item>
+                     <property name="text">
+                      <string>not equals</string>
+                     </property>
+                    </item>
+                    <item>
+                     <property name="text">
+                      <string>contains</string>
+                     </property>
+                    </item>
+                   </widget>
+                  </item>
+                  <item>
+                   <widget class="QLabel" name="entityValueLabel">
+                    <property name="text">
+                     <string>Value:</string>
+                    </property>
+                   </widget>
+                  </item>
+                  <item>
+                   <widget class="QLineEdit" name="entityValueLineEdit">
+                    <property name="placeholderText">
+                     <string>e.g., rest</string>
+                    </property>
+                   </widget>
+                  </item>
+                 </layout>
+                </widget>
+                <widget class="QWidget" name="participantAttributeDetailsPage">
+                 <layout class="QVBoxLayout" name="participantAttributeDetailsLayout">
+                  <item>
+                   <widget class="QLabel" name="participantAttributeNameLabel">
+                    <property name="text">
+                     <string>Attribute Name:</string>
+                    </property>
+                   </widget>
+                  </item>
+                  <item>
+                   <widget class="QComboBox" name="participantAttributeNameComboBox"/>
+                  </item>
+                  <item>
+                   <widget class="QLabel" name="participantAttributeOperatorLabel">
+                    <property name="text">
+                     <string>Operator:</string>
+                    </property>
+                   </widget>
+                  </item>
+                  <item>
+                   <widget class="QComboBox" name="participantAttributeOperatorComboBox">
+                    <item>
+                     <property name="text">
+                      <string>equals</string>
+                     </property>
+                    </item>
+                    <item>
+                     <property name="text">
+                      <string>not equals</string>
+                     </property>
+                    </item>
+                    <item>
+                     <property name="text">
+                      <string>contains</string>
+                     </property>
+                    </item>
+                    <item>
+                     <property name="text">
+                      <string>greater than</string>
+                     </property>
+                    </item>
+                    <item>
+                     <property name="text">
+                      <string>less than</string>
+                     </property>
+                    </item>
+                   </widget>
+                  </item>
+                  <item>
+                   <widget class="QLabel" name="participantAttributeValueLabel">
+                    <property name="text">
+                     <string>Value:</string>
+                    </property>
+                   </widget>
+                  </item>
+                  <item>
+                   <widget class="QLineEdit" name="participantAttributeValueLineEdit">
+                    <property name="placeholderText">
+                     <string>e.g., 25</string>
+                    </property>
+                   </widget>
+                  </item>
+                 </layout>
+                </widget>
+                <widget class="QWidget" name="channelAttributeDetailsPage">
+                 <layout class="QVBoxLayout" name="channelAttributeDetailsLayout">
+                  <item>
+                   <widget class="QLabel" name="channelAttributeNameLabel">
+                    <property name="text">
+                     <string>Attribute Name:</string>
+                    </property>
+                   </widget>
+                  </item>
+                  <item>
+                   <widget class="QComboBox" name="channelAttributeNameComboBox"/>
+                  </item>
+                  <item>
+                   <widget class="QLabel" name="channelAttributeOperatorLabel">
+                    <property name="text">
+                     <string>Operator:</string>
+                    </property>
+                   </widget>
+                  </item>
+                  <item>
+                   <widget class="QComboBox" name="channelAttributeOperatorComboBox">
+                    <item>
+                     <property name="text">
+                      <string>equals</string>
+                     </property>
+                    </item>
+                    <item>
+                     <property name="text">
+                      <string>not equals</string>
+                     </property>
+                    </item>
+                    <item>
+                     <property name="text">
+                      <string>contains</string>
+                     </property>
+                    </item>
+                    <item>
+                     <property name="text">
+                      <string>greater than</string>
+                     </property>
+                    </item>
+                    <item>
+                     <property name="text">
+                      <string>less than</string>
+                     </property>
+                    </item>
+                   </widget>
+                  </item>
+                  <item>
+                   <widget class="QLabel" name="channelAttributeValueLabel">
+                    <property name="text">
+                     <string>Value:</string>
+                    </property>
+                   </widget>
+                  </item>
+                  <item>
+                   <widget class="QLineEdit" name="channelAttributeValueLineEdit">
+                    <property name="placeholderText">
+                     <string>e.g., 1000</string>
+                    </property>
+                   </widget>
+                  </item>
+                 </layout>
+                </widget>
+                <widget class="QWidget" name="electrodeAttributeDetailsPage">
+                 <layout class="QVBoxLayout" name="electrodeAttributeDetailsLayout">
+                  <item>
+                   <widget class="QLabel" name="electrodeAttributeNameLabel">
+                    <property name="text">
+                     <string>Attribute Name:</string>
+                    </property>
+                   </widget>
+                  </item>
+                  <item>
+                   <widget class="QComboBox" name="electrodeAttributeNameComboBox"/>
+                  </item>
+                  <item>
+                   <widget class="QLabel" name="electrodeAttributeOperatorLabel">
+                    <property name="text">
+                     <string>Operator:</string>
+                    </property>
+                   </widget>
+                  </item>
+                  <item>
+                   <widget class="QComboBox" name="electrodeAttributeOperatorComboBox">
+                    <item>
+                     <property name="text">
+                      <string>equals</string>
+                     </property>
+                    </item>
+                    <item>
+                     <property name="text">
+                      <string>not equals</string>
+                     </property>
+                    </item>
+                    <item>
+                     <property name="text">
+                      <string>contains</string>
+                     </property>
+                    </item>
+                    <item>
+                     <property name="text">
+                      <string>greater than</string>
+                     </property>
+                    </item>
+                    <item>
+                     <property name="text">
+                      <string>less than</string>
+                     </property>
+                    </item>
+                   </widget>
+                  </item>
+                  <item>
+                   <widget class="QLabel" name="electrodeAttributeValueLabel">
+                    <property name="text">
+                     <string>Value:</string>
+                    </property>
+                   </widget>
+                  </item>
+                  <item>
+                   <widget class="QLineEdit" name="electrodeAttributeValueLineEdit">
+                    <property name="placeholderText">
+                     <string>e.g., platinum</string>
+                    </property>
+                   </widget>
+                  </item>
+                 </layout>
+                </widget>
+               </widget>
+              </item>
+             </layout>
+            </widget>
+           </widget>
+          </item>
+          <item>
+           <spacer name="editorVerticalSpacer">
+            <property name="orientation">
+             <enum>Qt::Vertical</enum>
+            </property>
+            <property name="sizeHint" stdset="0">
+             <size>
+              <width>20</width>
+              <height>40</height>
+             </size>
+            </property>
+           </spacer>
+          </item>
+         </layout>
         </widget>
        </item>
       </layout>
@@ -150,6 +661,70 @@ p, li { white-space: pre-wrap; }
     </widget>
    </item>
   </layout>
+  <action name="actionAddCondition">
+   <property name="text">
+    <string>Add Condition</string>
+   </property>
+   <property name="toolTip">
+    <string>Add a new filter condition</string>
+   </property>
+  </action>
+  <action name="actionAddGroup">
+   <property name="text">
+    <string>Add Group</string>
+   </property>
+   <property name="toolTip">
+    <string>Add a logical group (AND/OR/NOT)</string>
+   </property>
+  </action>
+  <action name="actionDelete">
+   <property name="text">
+    <string>Delete</string>
+   </property>
+   <property name="toolTip">
+    <string>Delete selected item</string>
+   </property>
+  </action>
+  <action name="actionMoveUp">
+   <property name="text">
+    <string>Move Up</string>
+   </property>
+   <property name="toolTip">
+    <string>Move item up</string>
+   </property>
+  </action>
+  <action name="actionMoveDown">
+   <property name="text">
+    <string>Move Down</string>
+   </property>
+   <property name="toolTip">
+    <string>Move item down</string>
+   </property>
+  </action>
+  <action name="actionCut">
+   <property name="text">
+    <string>Cut</string>
+   </property>
+   <property name="toolTip">
+    <string>Cut selected item</string>
+   </property>
+  </action>
+  <action name="actionCopy">
+   <property name="text">
+    <string>Copy</string>
+   </property>
+   <property name="toolTip">
+    <string>Copy selected item</string>
+   </property>
+  </action>
+  <action name="actionPaste">
+   <property name="text">
+    <string>Paste</string>
+   </property>
+   <property name="toolTip">
+    <string>Paste item</string>
+   </property>
+  </action>
  </widget>
  <resources/>
  <connections>
