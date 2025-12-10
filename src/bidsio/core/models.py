@@ -567,31 +567,42 @@ class ParticipantAttributeFilter(FilterCondition):
         if attr_value is None:
             return False
         
-        # Convert to appropriate type for comparison
-        try:
-            if self.operator in ['greater_than', 'less_than']:
-                attr_value = float(attr_value)
-                compare_value = float(self.value)
-            else:
-                attr_value = str(attr_value)
-                compare_value = str(self.value)
-        except (ValueError, TypeError):
-            return False
-        
         # Apply operator
-        if self.operator == 'equals':
-            return attr_value == compare_value
-        elif self.operator == 'not_equals':
-            return attr_value != compare_value
+        # For equals/not_equals, try numeric comparison first, then fall back to string
+        if self.operator in ['equals', 'not_equals']:
+            try:
+                # Try numeric comparison
+                attr_value_num = float(attr_value)
+                compare_value_num = float(self.value)
+                if self.operator == 'equals':
+                    return attr_value_num == compare_value_num
+                else:  # not_equals
+                    return attr_value_num != compare_value_num
+            except (ValueError, TypeError):
+                # Fall back to string comparison
+                attr_value_str = str(attr_value)
+                compare_value_str = str(self.value)
+                if self.operator == 'equals':
+                    return attr_value_str == compare_value_str
+                else:  # not_equals
+                    return attr_value_str != compare_value_str
         elif self.operator == 'contains':
-            # Type narrowing: contains only works with strings
-            return isinstance(compare_value, str) and isinstance(attr_value, str) and compare_value in attr_value
-        elif self.operator == 'greater_than':
-            # Type narrowing: comparison only works with numbers
-            return isinstance(attr_value, (int, float)) and isinstance(compare_value, (int, float)) and attr_value > compare_value
-        elif self.operator == 'less_than':
-            # Type narrowing: comparison only works with numbers
-            return isinstance(attr_value, (int, float)) and isinstance(compare_value, (int, float)) and attr_value < compare_value
+            try:
+                attr_value_str = str(attr_value)
+                compare_value_str = str(self.value)
+                return compare_value_str in attr_value_str
+            except (ValueError, TypeError):
+                return False
+        elif self.operator in ['greater_than', 'less_than']:
+            try:
+                attr_value_num = float(attr_value)
+                compare_value_num = float(self.value)
+                if self.operator == 'greater_than':
+                    return attr_value_num > compare_value_num
+                else:  # less_than
+                    return attr_value_num < compare_value_num
+            except (ValueError, TypeError):
+                return False
         else:
             return False
     
@@ -617,48 +628,71 @@ class EntityFilter(FilterCondition):
     """Filter by BIDS entity value."""
     
     entity_code: str = ''
-    """Entity code (e.g., 'task', 'run', 'ses')."""
+    """Entity code (e.g., 'task', 'run', 'ses', 'acq')."""
     
-    values: list[str] = field(default_factory=list)
-    """List of entity values to include (e.g., ['VISU', 'REST'])."""
+    operator: str = 'equals'
+    """Comparison operator: 'equals', 'contains', 'not_equals'."""
+    
+    value: str = ''
+    """Value to compare against."""
     
     def evaluate(self, subject: BIDSSubject, dataset: BIDSDataset) -> bool:
-        """Check if subject has files with any of the specified entity values."""
-        if not self.entity_code or not self.values:
+        """Check if subject has files with entity values matching the condition."""
+        if not self.entity_code or self.value == '':
             return True
         
         # Special handling for 'ses' entity
         if self.entity_code == 'ses':
             for session in subject.sessions:
-                if session.session_id in self.values:
+                if session.session_id and self._compare_values(session.session_id, self.value):
                     return True
             return False
         
         # Check all files in subject
         for file in subject.files:
-            if self.entity_code in file.entities and file.entities[self.entity_code] in self.values:
-                return True
+            if self.entity_code in file.entities:
+                entity_value = file.entities[self.entity_code]
+                if self._compare_values(entity_value, self.value):
+                    return True
         
         # Check all files in sessions
         for session in subject.sessions:
             for file in session.files:
-                if self.entity_code in file.entities and file.entities[self.entity_code] in self.values:
-                    return True
+                if self.entity_code in file.entities:
+                    entity_value = file.entities[self.entity_code]
+                    if self._compare_values(entity_value, self.value):
+                        return True
         
         return False
+    
+    def _compare_values(self, entity_value: str, compare_value: str) -> bool:
+        """Compare entity value with filter value using the operator."""
+        entity_value = str(entity_value)
+        compare_value = str(compare_value)
+        
+        if self.operator == 'equals':
+            return entity_value == compare_value
+        elif self.operator == 'not_equals':
+            return entity_value != compare_value
+        elif self.operator == 'contains':
+            return compare_value in entity_value
+        else:
+            return False
     
     def to_dict(self) -> dict:
         return {
             'type': 'entity',
             'entity_code': self.entity_code,
-            'values': self.values
+            'operator': self.operator,
+            'value': self.value
         }
     
     @classmethod
     def from_dict(cls, data: dict) -> 'EntityFilter':
         return cls(
             entity_code=data.get('entity_code', ''),
-            values=data.get('values', [])
+            operator=data.get('operator', 'equals'),
+            value=data.get('value', '')
         )
 
 
@@ -692,32 +726,44 @@ class ChannelAttributeFilter(FilterCondition):
                 
                 attr_value = channel[self.attribute_name]
                 
-                # Convert to appropriate type for comparison
-                try:
-                    if self.operator in ['greater_than', 'less_than']:
-                        attr_value = float(attr_value)
-                        compare_value = float(self.value)
-                    else:
-                        attr_value = str(attr_value)
-                        compare_value = str(self.value)
-                except (ValueError, TypeError):
-                    continue
-                
                 # Apply operator
                 match = False
-                if self.operator == 'equals':
-                    match = attr_value == compare_value
-                elif self.operator == 'not_equals':
-                    match = attr_value != compare_value
+                
+                # For equals/not_equals, try numeric comparison first, then fall back to string
+                if self.operator in ['equals', 'not_equals']:
+                    try:
+                        # Try numeric comparison
+                        attr_value_num = float(attr_value)
+                        compare_value_num = float(self.value)
+                        if self.operator == 'equals':
+                            match = attr_value_num == compare_value_num
+                        else:  # not_equals
+                            match = attr_value_num != compare_value_num
+                    except (ValueError, TypeError):
+                        # Fall back to string comparison
+                        attr_value_str = str(attr_value)
+                        compare_value_str = str(self.value)
+                        if self.operator == 'equals':
+                            match = attr_value_str == compare_value_str
+                        else:  # not_equals
+                            match = attr_value_str != compare_value_str
                 elif self.operator == 'contains':
-                    # Type narrowing: contains only works with strings
-                    match = isinstance(compare_value, str) and isinstance(attr_value, str) and compare_value in attr_value
-                elif self.operator == 'greater_than':
-                    # Type narrowing: comparison only works with numbers
-                    match = isinstance(attr_value, (int, float)) and isinstance(compare_value, (int, float)) and attr_value > compare_value
-                elif self.operator == 'less_than':
-                    # Type narrowing: comparison only works with numbers
-                    match = isinstance(attr_value, (int, float)) and isinstance(compare_value, (int, float)) and attr_value < compare_value
+                    try:
+                        attr_value_str = str(attr_value)
+                        compare_value_str = str(self.value)
+                        match = compare_value_str in attr_value_str
+                    except (ValueError, TypeError):
+                        match = False
+                elif self.operator in ['greater_than', 'less_than']:
+                    try:
+                        attr_value_num = float(attr_value)
+                        compare_value_num = float(self.value)
+                        if self.operator == 'greater_than':
+                            match = attr_value_num > compare_value_num
+                        else:  # less_than
+                            match = attr_value_num < compare_value_num
+                    except (ValueError, TypeError):
+                        match = False
                 
                 if match:
                     return True
@@ -771,32 +817,44 @@ class ElectrodeAttributeFilter(FilterCondition):
                 
                 attr_value = electrode[self.attribute_name]
                 
-                # Convert to appropriate type for comparison
-                try:
-                    if self.operator in ['greater_than', 'less_than']:
-                        attr_value = float(attr_value)
-                        compare_value = float(self.value)
-                    else:
-                        attr_value = str(attr_value)
-                        compare_value = str(self.value)
-                except (ValueError, TypeError):
-                    continue
-                
                 # Apply operator
                 match = False
-                if self.operator == 'equals':
-                    match = attr_value == compare_value
-                elif self.operator == 'not_equals':
-                    match = attr_value != compare_value
+                
+                # For equals/not_equals, try numeric comparison first, then fall back to string
+                if self.operator in ['equals', 'not_equals']:
+                    try:
+                        # Try numeric comparison
+                        attr_value_num = float(attr_value)
+                        compare_value_num = float(self.value)
+                        if self.operator == 'equals':
+                            match = attr_value_num == compare_value_num
+                        else:  # not_equals
+                            match = attr_value_num != compare_value_num
+                    except (ValueError, TypeError):
+                        # Fall back to string comparison
+                        attr_value_str = str(attr_value)
+                        compare_value_str = str(self.value)
+                        if self.operator == 'equals':
+                            match = attr_value_str == compare_value_str
+                        else:  # not_equals
+                            match = attr_value_str != compare_value_str
                 elif self.operator == 'contains':
-                    # Type narrowing: contains only works with strings
-                    match = isinstance(compare_value, str) and isinstance(attr_value, str) and compare_value in attr_value
-                elif self.operator == 'greater_than':
-                    # Type narrowing: comparison only works with numbers
-                    match = isinstance(attr_value, (int, float)) and isinstance(compare_value, (int, float)) and attr_value > compare_value
-                elif self.operator == 'less_than':
-                    # Type narrowing: comparison only works with numbers
-                    match = isinstance(attr_value, (int, float)) and isinstance(compare_value, (int, float)) and attr_value < compare_value
+                    try:
+                        attr_value_str = str(attr_value)
+                        compare_value_str = str(self.value)
+                        match = compare_value_str in attr_value_str
+                    except (ValueError, TypeError):
+                        match = False
+                elif self.operator in ['greater_than', 'less_than']:
+                    try:
+                        attr_value_num = float(attr_value)
+                        compare_value_num = float(self.value)
+                        if self.operator == 'greater_than':
+                            match = attr_value_num > compare_value_num
+                        else:  # less_than
+                            match = attr_value_num < compare_value_num
+                    except (ValueError, TypeError):
+                        match = False
                 
                 if match:
                     return True

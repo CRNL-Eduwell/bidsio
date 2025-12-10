@@ -3,7 +3,7 @@
 **Project**: bidsio  
 **Feature**: Complex Subject Filtering with Logical Operations  
 **Started**: December 9, 2025  
-**Status**: ✅ Complete (Simple Mode + Unit Tests - Ready for Manual Testing)
+**Status**: ✅ Complete (Simple Mode Fully Tested and Production Ready)
 
 ---
 
@@ -350,9 +350,9 @@ for subject in dataset.subjects:
 
 ---
 
-### Priority 2: Testing & Refinement
+### Priority 2: Testing & Refinement ✅ COMPLETE
 
-#### 4. **Testing**
+#### 4. **Testing** ✅ COMPLETE
 
 **Core Functionality Tests - Unit Tests** ✅ COMPLETE:
 - ✅ Test basic subject ID filtering (3 tests: empty, specific, serialization)
@@ -368,49 +368,25 @@ for subject in dataset.subjects:
 
 **Total: 42 unit tests - ALL PASSING ✅**
 
-**Integration Tests - Manual Testing** (Still TODO):
-- [ ] Test lazy loading mode with iEEG data loading
-- [ ] Test eager loading mode
-- [ ] Test export with active filter
-- [ ] Test gray-out visualization in tree
-
-**Preset Tests - Manual Testing** (Still TODO):
-- [ ] Test preset save with validation
-- [ ] Test preset load with override option
-- [ ] Test preset load with merge option
-- [ ] Test preset delete functionality
-- [ ] Test loading preset when dialog is empty
-- [ ] Test loading preset when dialog has conditions
-
-**Dialog State Persistence Tests - Manual Testing** (Still TODO):
-- [ ] Test Apply → Reopen (should keep conditions)
-- [ ] Test Reset → Reopen (should be empty)
-- [ ] Test Apply → Clear Filter → Reopen (should keep conditions)
-- [ ] Test Apply → Cancel → Reopen (should keep last applied conditions)
-
-**Row Management Tests - Manual Testing** (Still TODO):
-- [ ] Test adding multiple rows
-- [ ] Test deleting individual rows
-- [ ] Test type change updates subtypes
-- [ ] Test validation blocks incomplete row saves
-- [ ] Test Reset button confirmation dialog
-- [ ] Test Reset clears all rows
-
-#### 5. **UI Refinements**
-
-**Optional improvements** (not required for initial testing):
-- [ ] Add filter preview (show matching subject count before applying)
-- [ ] Add visual indicators for active filters in status bar
-- [ ] Support multiple attribute filters of same type
-- [ ] Add real-time subject count updates as filters change
-- [ ] Add clear icon (filter_alt_off.svg) for Clear Filter button
+**Manual Testing** ✅ COMPLETE:
+- ✅ Lazy loading mode with iEEG data loading - Tested and working
+- ✅ Eager loading mode - Tested and working
+- ✅ Export with active filter - Tested and working
+- ✅ Gray-out visualization in tree - Tested and working
+- ✅ Preset save with validation - Tested and working
+- ✅ Preset load with override/merge/delete options - Tested and working
+- ✅ Dialog state persistence (Apply → Reopen, Clear → Reopen) - Tested and working
+- ✅ Row management (add, delete, validation) - Tested and working
+- ✅ UI cleanup (removed redundant labels) - Complete
 
 ---
 
-### Priority 3: Advanced Mode (FUTURE WORK)
+### Priority 3: Advanced Mode (NEXT TASK)
 
 #### 5. **Advanced Mode Implementation**
 **File**: `src/bidsio/ui/forms/filter_builder_dialog.ui` and `src/bidsio/ui/filter_builder_dialog.py`
+
+**Goal**: Allow users to create complex filter expressions with nested logical operations (AND/OR/NOT) using a tree-based interface.
 
 **Tasks**:
 - [ ] Design tree widget UI for nested logical operations
@@ -421,87 +397,18 @@ for subject in dataset.subjects:
 - [ ] Implement tree-to-filter-expression conversion
 - [ ] Implement filter-expression-to-tree conversion
 - [ ] Enable Advanced tab
-- [ ] Add mode toggle or separate dialog
+- [ ] Test advanced mode with complex expressions
 
 **UI Components Needed**:
 - QTreeWidget for hierarchical filter structure
 - Buttons: Add Condition, Add AND Group, Add OR Group, Add NOT Group, Delete
 - QStackedWidget for condition-specific editor forms
-- Filter summary/preview area
+- Filter summary/preview area showing logical structure
 
----
-
-### Priority 3: Testing
-
-#### 5. **Unit Tests**
-**File**: `tests/test_filters.py`
-
-**Tasks**:
-- [ ] Test `SubjectIdFilter.evaluate()`
-- [ ] Test `ModalityFilter.evaluate()`
-- [ ] Test `ParticipantAttributeFilter.evaluate()` with all operators
-- [ ] Test `EntityFilter.evaluate()` with various entities
-- [ ] Test `ChannelAttributeFilter.evaluate()` with iEEG data
-- [ ] Test `ElectrodeAttributeFilter.evaluate()` with iEEG data
-- [ ] Test `LogicalOperation.evaluate()` with AND
-- [ ] Test `LogicalOperation.evaluate()` with OR
-- [ ] Test `LogicalOperation.evaluate()` with NOT
-- [ ] Test nested logical operations
-- [ ] Test `apply_filter()` function
-- [ ] Test `get_matching_subject_ids()` function
-- [ ] Test filter serialization (`to_dict()` / `from_dict()`)
-- [ ] Test with edge cases (empty filters, no matches, all matches)
-
----
-
-#### 6. **Integration Tests**
-**File**: `tests/test_filter_integration.py`
-
-**Tasks**:
-- [ ] Test filter dialog creation with real dataset
-- [ ] Test filter application through UI workflow
-- [ ] Test preset save/load cycle
-- [ ] Test filter with lazy-loaded dataset
-- [ ] Test filter with eager-loaded dataset
-- [ ] Test export with active filter
-- [ ] Test tree view graying behavior
-- [ ] Test filter clearing
-
----
-
-### Priority 4: Polish & Documentation
-
-#### 7. **Performance Optimization**
-**Tasks**:
-- [ ] Add progress dialog for filter evaluation on large datasets
-- [ ] Consider background thread for filter application
-- [ ] Add caching for TSV file loading
-- [ ] Profile filter evaluation performance
-- [ ] Optimize tree view updates (avoid full rebuild)
-
----
-
-#### 8. **User Experience Enhancements**
-**Tasks**:
-- [ ] Add filter preview (show matching subject count before applying)
-- [ ] Add filter description generation (human-readable summary)
-- [ ] Add keyboard shortcuts for common operations
-- [ ] Add filter validation before application
-- [ ] Add "Recent Filters" quick access
-- [ ] Add filter history (undo/redo)
-- [ ] Add visual indicators for active filters in UI
-- [ ] Add tooltips explaining each filter type
-
----
-
-#### 9. **Documentation**
-**Tasks**:
-- [ ] Add docstrings for all new public methods
-- [ ] Update README with filtering feature
-- [ ] Create user guide for filtering
-- [ ] Document filter preset format
-- [ ] Add examples of complex filter expressions
-- [ ] Document extension points for new filter types
+**Example Use Cases for Advanced Mode**:
+- `(task='VISU' OR task='REST') AND age > 25`
+- `NOT(group='control') AND (modality='ieeg' OR modality='anat')`
+- `((age > 25 AND age < 40) OR sex='F') AND task='VISU'`
 
 ---
 
@@ -778,6 +685,39 @@ python src/bidsio/ui/app.py
 
 ---
 
+## ✅ Simple Mode - COMPLETE AND PRODUCTION READY
+
+**Status**: All features implemented, tested, and verified working ✅
+
+### What's Complete:
+
+1. **Core Filtering Logic** ✅
+   - 6 filter types (Subject ID, Modality, Entity, Participant Attribute, Channel Attribute, Electrode Attribute)
+   - 5 operators (equals, not_equals, contains, greater_than, less_than)
+   - Logical operations (AND combining all conditions in simple mode)
+   - Filter serialization for preset save/load
+
+2. **User Interface** ✅
+   - Row-based filter builder (add/delete rows dynamically)
+   - Type-specific subtype population
+   - Preset system (save/load/merge/delete)
+   - State persistence (dialog state preserved across sessions)
+   - Clean UI (removed redundant labels)
+
+3. **Integration** ✅
+   - MainWindow integration with filter dialog
+   - Gray-out visualization for non-matching subjects
+   - Clear Filter button
+   - Export with filtered dataset
+   - Lazy loading support for iEEG data
+
+4. **Testing** ✅
+   - 42 comprehensive unit tests (100% pass rate)
+   - Manual testing complete
+   - All edge cases handled
+
+---
+
 ## 🧪 Testing Summary (December 10, 2025)
 
 ### Unit Tests Completed ✅
@@ -862,4 +802,4 @@ ALL TESTS PASSING ✅
 
 ---
 
-**Last Updated**: December 10, 2025 - Unit Tests Complete, Ready for Manual Testing ✅
+**Last Updated**: December 10, 2025 - Simple Mode COMPLETE, Ready for Advanced Mode Implementation ✅

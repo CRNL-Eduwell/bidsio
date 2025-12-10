@@ -286,9 +286,9 @@ class TestModalityFilter:
 class TestEntityFilter:
     """Tests for EntityFilter."""
     
-    def test_filter_by_task(self, dataset_with_entities):
-        """Filter by task entity."""
-        filter_obj = EntityFilter(entity_code="task", values=["VISU"])
+    def test_filter_by_task_equals(self, dataset_with_entities):
+        """Filter by task entity with equals operator."""
+        filter_obj = EntityFilter(entity_code="task", operator="equals", value="VISU")
         
         # Subject 01: has task-VISU
         assert filter_obj.evaluate(dataset_with_entities.subjects[0], dataset_with_entities)
@@ -297,33 +297,49 @@ class TestEntityFilter:
         # Subject 03: has both
         assert filter_obj.evaluate(dataset_with_entities.subjects[2], dataset_with_entities)
     
-    def test_filter_by_multiple_values(self, dataset_with_entities):
-        """Filter with multiple values should match any."""
-        filter_obj = EntityFilter(entity_code="task", values=["VISU", "REST"])
+    def test_filter_by_task_not_equals(self, dataset_with_entities):
+        """Filter by task entity with not_equals operator."""
+        filter_obj = EntityFilter(entity_code="task", operator="not_equals", value="VISU")
         
-        # All subjects have at least one of these tasks
-        for subject in dataset_with_entities.subjects:
-            assert filter_obj.evaluate(subject, dataset_with_entities)
+        # Subject 01: has only task-VISU (not_equals fails)
+        assert not filter_obj.evaluate(dataset_with_entities.subjects[0], dataset_with_entities)
+        # Subject 02: has only task-REST (not_equals succeeds)
+        assert filter_obj.evaluate(dataset_with_entities.subjects[1], dataset_with_entities)
+        # Subject 03: has both tasks (has REST which != VISU)
+        assert filter_obj.evaluate(dataset_with_entities.subjects[2], dataset_with_entities)
     
-    def test_empty_values_matches_all(self, dataset_with_entities):
-        """Empty values list should match all subjects."""
-        filter_obj = EntityFilter(entity_code="task", values=[])
+    def test_filter_by_task_contains(self, dataset_with_entities):
+        """Filter by task entity with contains operator."""
+        filter_obj = EntityFilter(entity_code="task", operator="contains", value="VIS")
+        
+        # Subject 01: has task-VISU (contains "VIS")
+        assert filter_obj.evaluate(dataset_with_entities.subjects[0], dataset_with_entities)
+        # Subject 02: has only task-REST (doesn't contain "VIS")
+        assert not filter_obj.evaluate(dataset_with_entities.subjects[1], dataset_with_entities)
+        # Subject 03: has both (has VISU which contains "VIS")
+        assert filter_obj.evaluate(dataset_with_entities.subjects[2], dataset_with_entities)
+    
+    def test_empty_value_matches_all(self, dataset_with_entities):
+        """Empty value should match all subjects."""
+        filter_obj = EntityFilter(entity_code="task", operator="equals", value="")
         
         for subject in dataset_with_entities.subjects:
             assert filter_obj.evaluate(subject, dataset_with_entities)
     
     def test_serialization(self):
         """Test to_dict and from_dict."""
-        original = EntityFilter(entity_code="task", values=["VISU", "REST"])
+        original = EntityFilter(entity_code="task", operator="contains", value="VISU")
         
         data = original.to_dict()
         assert data['type'] == 'entity'
         assert data['entity_code'] == "task"
-        assert data['values'] == ["VISU", "REST"]
+        assert data['operator'] == "contains"
+        assert data['value'] == "VISU"
         
         restored = EntityFilter.from_dict(data)
         assert restored.entity_code == original.entity_code
-        assert restored.values == original.values
+        assert restored.operator == original.operator
+        assert restored.value == original.value
 
 
 # ============================================================================
@@ -571,7 +587,7 @@ class TestLogicalOperation:
     def test_and_operation(self, dataset_with_entities):
         """Test AND logical operation."""
         # Create filter: task='VISU' AND subject_id='03'
-        filter1 = EntityFilter(entity_code="task", values=["VISU"])
+        filter1 = EntityFilter(entity_code="task", operator="equals", value="VISU")
         filter2 = SubjectIdFilter(subject_ids=["03"])
         
         and_op = LogicalOperation(operator="AND", conditions=[filter1, filter2])
@@ -676,7 +692,7 @@ class TestApplyFilter:
     
     def test_apply_combined_filter(self, dataset_with_entities):
         """Test applying combined filter (AND operation)."""
-        filter1 = EntityFilter(entity_code="task", values=["VISU"])
+        filter1 = EntityFilter(entity_code="task", operator="equals", value="VISU")
         filter2 = SubjectIdFilter(subject_ids=["01", "03"])
         
         combined = LogicalOperation(operator="AND", conditions=[filter1, filter2])

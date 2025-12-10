@@ -175,13 +175,15 @@ class FilterBuilderDialog(QDialog):
         
         # Connect signals
         type_combo.currentTextChanged.connect(lambda: self._update_row_subtypes(row_data))
+        type_combo.currentTextChanged.connect(lambda: self._update_row_operators(row_data))
         delete_button.clicked.connect(lambda: self._delete_filter_row(row_data))
         
         # Add row to layout
         self.ui.filterRowsLayout.addLayout(row_layout)
         
-        # Update subtypes based on selected type
+        # Update subtypes and operators based on selected type
         self._update_row_subtypes(row_data)
+        self._update_row_operators(row_data)
         
         # Restore subtype if provided
         if subtype and subtype_combo.count() > 0:
@@ -201,12 +203,10 @@ class FilterBuilderDialog(QDialog):
         if filter_type == "Subject ID":
             subtype_combo.setEnabled(False)
             subtype_combo.addItem("(not applicable)")
-            operator_combo.setEnabled(True)
             
         elif filter_type == "Modality":
             subtype_combo.setEnabled(False)
             subtype_combo.addItem("(not applicable)")
-            operator_combo.setEnabled(True)
             
         elif filter_type == "Entity":
             subtype_combo.setEnabled(True)
@@ -214,26 +214,57 @@ class FilterBuilderDialog(QDialog):
                 if entity_code not in ['sub', 'ses']:
                     from bidsio.core.entity_config import get_entity_full_name
                     subtype_combo.addItem(entity_code, entity_code)
-            operator_combo.setEnabled(True)
             
         elif filter_type == "Subject Attribute":
             subtype_combo.setEnabled(True)
             for attr in self._participant_attributes:
                 if attr != 'participant_id':
                     subtype_combo.addItem(attr)
-            operator_combo.setEnabled(True)
             
         elif filter_type == "Channel Attribute":
             subtype_combo.setEnabled(True)
             for attr in self._channel_attributes:
                 subtype_combo.addItem(attr)
-            operator_combo.setEnabled(True)
             
         elif filter_type == "Electrode Attribute":
             subtype_combo.setEnabled(True)
             for attr in self._electrode_attributes:
                 subtype_combo.addItem(attr)
+    
+    def _update_row_operators(self, row_data: dict):
+        """Update the operator dropdown based on selected filter type."""
+        filter_type = row_data['type_combo'].currentText()
+        operator_combo = row_data['operator_combo']
+        
+        # Remember current selection if valid
+        current_operator = operator_combo.currentText()
+        
+        # Clear existing items
+        operator_combo.clear()
+        
+        # Set operators based on filter type
+        if filter_type in ["Subject ID", "Modality"]:
+            # These filters only support exact matching (list-based)
+            operator_combo.addItem("equals")
+            operator_combo.setEnabled(False)  # Disable since only one option
+            
+        elif filter_type == "Entity":
+            # Entity filters support equals, not_equals, and contains
+            operator_combo.addItems(['equals', 'not_equals', 'contains'])
             operator_combo.setEnabled(True)
+            
+            # Restore previous selection if it was valid
+            if current_operator in ['equals', 'not_equals', 'contains']:
+                operator_combo.setCurrentText(current_operator)
+            
+        elif filter_type in ["Subject Attribute", "Channel Attribute", "Electrode Attribute"]:
+            # These support all operators
+            operator_combo.addItems(['equals', 'not_equals', 'contains', 'greater_than', 'less_than'])
+            operator_combo.setEnabled(True)
+            
+            # Restore previous selection if it was valid
+            if current_operator in ['equals', 'not_equals', 'contains', 'greater_than', 'less_than']:
+                operator_combo.setCurrentText(current_operator)
     
     def _delete_filter_row(self, row_data: dict):
         """Delete a filter row."""
@@ -312,9 +343,8 @@ class FilterBuilderDialog(QDialog):
                     self._add_filter_row("Modality", None, "equals", modality)
             
             elif isinstance(condition, EntityFilter):
-                # Create one row per entity value
-                for value in condition.values:
-                    self._add_filter_row("Entity", condition.entity_code, "equals", value)
+                # Create one row for the entity filter
+                self._add_filter_row("Entity", condition.entity_code, condition.operator, condition.value)
             
             elif isinstance(condition, ParticipantAttributeFilter):
                 self._add_filter_row(
@@ -404,7 +434,11 @@ class FilterBuilderDialog(QDialog):
             
             elif filter_type == "Entity":
                 if subtype and value_text:
-                    conditions.append(EntityFilter(entity_code=subtype, values=[value_text]))
+                    conditions.append(EntityFilter(
+                        entity_code=subtype,
+                        operator=operator,
+                        value=value_text
+                    ))
             
             elif filter_type == "Subject Attribute":
                 if subtype and subtype != "(not applicable)":
@@ -458,7 +492,6 @@ class FilterBuilderDialog(QDialog):
             for row_data in self._filter_rows[:]:  # Copy list to avoid modification during iteration
                 self._delete_filter_row(row_data)
             
-            self.ui.statusLabel.setText("All filters cleared")
             logger.debug("Filters reset")
     
     @Slot()
@@ -618,7 +651,6 @@ class FilterBuilderDialog(QDialog):
             self._restore_filter_to_ui(filter_expr)
             
             action = "loaded" if should_override else "merged"
-            self.ui.statusLabel.setText(f"Preset '{selected_file.stem}' {action} successfully")
             logger.info(f"Filter preset {action} from: {selected_file}")
             
         except Exception as e:
