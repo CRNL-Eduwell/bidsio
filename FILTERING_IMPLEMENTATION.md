@@ -3,7 +3,7 @@
 **Project**: bidsio  
 **Feature**: Complex Subject Filtering with Logical Operations  
 **Started**: December 9, 2025  
-**Status**: ✅ Complete (Simple Mode Ready for Testing)
+**Status**: ✅ Complete (Simple Mode + Unit Tests - Ready for Manual Testing)
 
 ---
 
@@ -354,20 +354,27 @@ for subject in dataset.subjects:
 
 #### 4. **Testing**
 
-**Core Functionality Tests**:
-- [ ] Test basic subject ID filtering
-- [ ] Test modality filtering
-- [ ] Test entity filtering (task, run, etc.)
-- [ ] Test participant attribute filtering
-- [ ] Test channel attribute filtering (if iEEG data present)
-- [ ] Test electrode attribute filtering (if iEEG data present)
-- [ ] Test filter combinations (multiple filters ANDed)
+**Core Functionality Tests - Unit Tests** ✅ COMPLETE:
+- ✅ Test basic subject ID filtering (3 tests: empty, specific, serialization)
+- ✅ Test modality filtering (5 tests: empty, single, multiple, sessions, serialization)
+- ✅ Test entity filtering (4 tests: single, multiple, empty, serialization)
+- ✅ Test participant attribute filtering (7 tests: all operators + missing data + serialization)
+- ✅ Test channel attribute filtering (4 tests: equals, contains, no data, serialization)
+- ✅ Test electrode attribute filtering (3 tests: equals, not_equals, serialization)
+- ✅ Test filter combinations (5 tests: AND, OR, NOT, nested operations, serialization)
+- ✅ Test apply_filter() function (5 tests: various scenarios + structure preservation)
+- ✅ Test get_matching_subject_ids() function (3 tests: matches, no matches, all match)
+- ✅ Test edge cases (3 tests: empty dataset, no conditions, case sensitivity)
+
+**Total: 42 unit tests - ALL PASSING ✅**
+
+**Integration Tests - Manual Testing** (Still TODO):
 - [ ] Test lazy loading mode with iEEG data loading
 - [ ] Test eager loading mode
 - [ ] Test export with active filter
 - [ ] Test gray-out visualization in tree
 
-**Preset Tests**:
+**Preset Tests - Manual Testing** (Still TODO):
 - [ ] Test preset save with validation
 - [ ] Test preset load with override option
 - [ ] Test preset load with merge option
@@ -375,13 +382,13 @@ for subject in dataset.subjects:
 - [ ] Test loading preset when dialog is empty
 - [ ] Test loading preset when dialog has conditions
 
-**Dialog State Persistence Tests**:
+**Dialog State Persistence Tests - Manual Testing** (Still TODO):
 - [ ] Test Apply → Reopen (should keep conditions)
 - [ ] Test Reset → Reopen (should be empty)
 - [ ] Test Apply → Clear Filter → Reopen (should keep conditions)
 - [ ] Test Apply → Cancel → Reopen (should keep last applied conditions)
 
-**Row Management Tests**:
+**Row Management Tests - Manual Testing** (Still TODO):
 - [ ] Test adding multiple rows
 - [ ] Test deleting individual rows
 - [ ] Test type change updates subtypes
@@ -561,10 +568,11 @@ None currently - all known issues have been resolved! ✅
 - ✅ `src/bidsio/infrastructure/paths.py` (+12 lines: get_filter_presets_directory)
 - ✅ `src/bidsio/ui/main_window.py` (+145 lines: filter dialog integration, state management)
 - ✅ `src/bidsio/ui/forms/main_window.ui` (+Clear Filter button)
+- ✅ `tests/test_filters.py` (✅ COMPLETE - 42 unit tests covering all filter classes)
+- ✅ `tests/test_bids_loader.py` (fixed import paths)
 
 ### Files to Create:
-- ⏳ `tests/test_filters.py` (unit tests)
-- ⏳ `tests/test_filter_integration.py` (integration tests)
+- ⏳ `tests/test_filter_integration.py` (GUI integration tests - optional)
 
 ---
 
@@ -770,4 +778,88 @@ python src/bidsio/ui/app.py
 
 ---
 
-**Last Updated**: December 9, 2025 - Simple Mode Complete with Full State Persistence ✅
+## 🧪 Testing Summary (December 10, 2025)
+
+### Unit Tests Completed ✅
+
+**File**: `tests/test_filters.py` - **42 tests, ALL PASSING** ✅
+
+#### Test Coverage:
+
+1. **SubjectIdFilter** (3 tests)
+   - Empty filter matches all subjects
+   - Filter matches specific subject IDs
+   - Serialization (to_dict/from_dict)
+
+2. **ModalityFilter** (5 tests)
+   - Empty filter matches all subjects
+   - Filter matches subjects with specific modality
+   - Filter with multiple modalities (OR logic)
+   - Filter checks files in sessions
+   - Serialization
+
+3. **EntityFilter** (4 tests)
+   - Filter by single entity value (e.g., task='VISU')
+   - Filter with multiple values (OR logic)
+   - Empty values matches all
+   - Serialization
+
+4. **ParticipantAttributeFilter** (7 tests)
+   - Equals operator (string comparison)
+   - Not equals operator
+   - Contains operator (substring matching)
+   - Greater than operator (numeric comparison)
+   - Less than operator (numeric comparison)
+   - Missing participant data handling
+   - Serialization
+
+5. **ChannelAttributeFilter** (4 tests)
+   - Equals operator with channel attributes
+   - Contains operator
+   - No iEEG data handling
+   - Serialization
+
+6. **ElectrodeAttributeFilter** (3 tests)
+   - Equals operator with electrode attributes
+   - Not equals operator
+   - Serialization
+
+7. **LogicalOperation** (5 tests)
+   - AND operation (multiple conditions)
+   - OR operation (alternative conditions)
+   - NOT operation (negation)
+   - Nested operations (complex expressions)
+   - Serialization
+
+8. **apply_filter()** (5 tests)
+   - Apply subject ID filter
+   - Apply modality filter
+   - Apply combined filter (logical operations)
+   - Empty result handling
+   - Dataset structure preservation
+
+9. **get_matching_subject_ids()** (3 tests)
+   - Get matching IDs
+   - No matches
+   - All match
+
+10. **Edge Cases** (3 tests)
+    - Empty dataset handling
+    - Filter with no conditions
+    - Case-sensitive subject ID matching
+
+### Test Results:
+```
+115 tests total in test suite
+42 new filter tests
+ALL TESTS PASSING ✅
+```
+
+### Next Steps for Testing:
+1. **Manual Testing** - Launch app and test full workflow with real BIDS dataset
+2. **UI Testing** - Test filter dialog, presets, state persistence
+3. **Integration Testing** (optional) - Automated GUI tests with pytest-qt
+
+---
+
+**Last Updated**: December 10, 2025 - Unit Tests Complete, Ready for Manual Testing ✅

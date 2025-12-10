@@ -7,8 +7,8 @@ from pathlib import Path
 import json
 import pytest
 
-from bidsio.core.repository import BidsRepository
-from bidsio.infrastructure.bids_loader import BidsLoader, is_bids_dataset
+from src.bidsio.core.repository import BidsRepository
+from src.bidsio.infrastructure.bids_loader import BidsLoader, is_bids_dataset
 
 
 class TestBidsLoader:
