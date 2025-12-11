@@ -35,7 +35,7 @@
             <x>0</x>
             <y>0</y>
             <width>554</width>
-            <height>303</height>
+            <height>365</height>
            </rect>
           </property>
           <layout class="QVBoxLayout" name="filtersLayout">
@@ -56,7 +56,7 @@
            <item>
             <spacer name="verticalSpacer">
              <property name="orientation">
-              <enum>Qt::Vertical</enum>
+              <enum>Qt::Orientation::Vertical</enum>
              </property>
              <property name="sizeHint" stdset="0">
               <size>
@@ -125,10 +125,10 @@
           <item>
            <widget class="QTreeWidget" name="filterTreeWidget">
             <property name="contextMenuPolicy">
-             <enum>Qt::CustomContextMenu</enum>
+             <enum>Qt::ContextMenuPolicy::CustomContextMenu</enum>
             </property>
             <property name="selectionMode">
-             <enum>QAbstractItemView::SingleSelection</enum>
+             <enum>QAbstractItemView::SelectionMode::SingleSelection</enum>
             </property>
             <property name="headerHidden">
              <bool>true</bool>
@@ -166,7 +166,6 @@
             <property name="font">
              <font>
               <pointsize>10</pointsize>
-              <weight>75</weight>
               <bold>true</bold>
              </font>
             </property>
@@ -185,7 +184,7 @@
               <item>
                <spacer name="emptyTopSpacer">
                 <property name="orientation">
-                 <enum>Qt::Vertical</enum>
+                 <enum>Qt::Orientation::Vertical</enum>
                 </property>
                 <property name="sizeHint" stdset="0">
                  <size>
@@ -203,7 +202,7 @@ or click 'Add Condition' or 'Add Group'
 to start building your filter.</string>
                 </property>
                 <property name="alignment">
-                 <set>Qt::AlignCenter</set>
+                 <set>Qt::AlignmentFlag::AlignCenter</set>
                 </property>
                 <property name="wordWrap">
                  <bool>true</bool>
@@ -213,7 +212,7 @@ to start building your filter.</string>
               <item>
                <spacer name="emptyBottomSpacer">
                 <property name="orientation">
-                 <enum>Qt::Vertical</enum>
+                 <enum>Qt::Orientation::Vertical</enum>
                 </property>
                 <property name="sizeHint" stdset="0">
                  <size>
@@ -602,7 +601,7 @@ NOT: Child condition must not match (1 child only)</string>
           <item>
            <spacer name="editorVerticalSpacer">
             <property name="orientation">
-             <enum>Qt::Vertical</enum>
+             <enum>Qt::Orientation::Vertical</enum>
             </property>
             <property name="sizeHint" stdset="0">
              <size>
@@ -638,7 +637,7 @@ NOT: Child condition must not match (1 child only)</string>
      <item>
       <spacer name="horizontalSpacer">
        <property name="orientation">
-        <enum>Qt::Horizontal</enum>
+        <enum>Qt::Orientation::Horizontal</enum>
        </property>
        <property name="sizeHint" stdset="0">
         <size>
@@ -648,15 +647,29 @@ NOT: Child condition must not match (1 child only)</string>
        </property>
       </spacer>
      </item>
+     <item>
+      <widget class="QPushButton" name="helpButton">
+       <property name="toolTip">
+        <string>Show filtering help documentation</string>
+       </property>
+       <property name="text">
+        <string/>
+       </property>
+       <property name="icon">
+        <iconset resource="../resources/resources.qrc">
+         <normaloff>:/icons/help_icon.svg</normaloff>:/icons/help_icon.svg</iconset>
+       </property>
+      </widget>
+     </item>
     </layout>
    </item>
    <item>
     <widget class="QDialogButtonBox" name="buttonBox">
      <property name="orientation">
-      <enum>Qt::Horizontal</enum>
+      <enum>Qt::Orientation::Horizontal</enum>
      </property>
      <property name="standardButtons">
-      <set>QDialogButtonBox::Apply|QDialogButtonBox::Cancel|QDialogButtonBox::Reset</set>
+      <set>QDialogButtonBox::StandardButton::Apply|QDialogButtonBox::StandardButton::Cancel|QDialogButtonBox::StandardButton::Reset</set>
      </property>
     </widget>
    </item>
@@ -726,7 +739,9 @@ NOT: Child condition must not match (1 child only)</string>
    </property>
   </action>
  </widget>
- <resources/>
+ <resources>
+  <include location="../resources/resources.qrc"/>
+ </resources>
  <connections>
   <connection>
    <sender>buttonBox</sender>

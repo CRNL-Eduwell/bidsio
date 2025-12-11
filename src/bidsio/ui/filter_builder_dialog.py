@@ -8,6 +8,7 @@ Currently implements Simple mode; Advanced mode with logical operations is plann
 import json
 from pathlib import Path
 from typing import Optional
+import tempfile
 
 from PySide6.QtWidgets import (
     QDialog, QVBoxLayout, QHBoxLayout, QLabel, QPushButton,
@@ -15,11 +16,12 @@ from PySide6.QtWidgets import (
     QInputDialog, QCheckBox, QListWidgetItem, QDialogButtonBox,
     QTreeWidgetItem, QMenu
 )
-from PySide6.QtCore import Slot, Qt
+from PySide6.QtCore import Slot, Qt, QFile, QTextStream, QTimer
 from PySide6.QtGui import QIcon, QKeySequence, QShortcut, QBrush, QColor
 
 from bidsio.infrastructure.logging_config import get_logger
 from bidsio.infrastructure.paths import get_filter_presets_directory
+from bidsio.ui.text_viewer_dialog import TextViewerDialog
 from bidsio.core.models import (
     BIDSDataset,
     FilterCondition,
@@ -224,7 +226,6 @@ class FilterBuilderDialog(QDialog):
             subtype_combo.setEnabled(True)
             for entity_code in self._available_entities.keys():
                 if entity_code not in ['sub', 'ses']:
-                    from bidsio.core.entity_config import get_entity_full_name
                     subtype_combo.addItem(entity_code, entity_code)
             
         elif filter_type == "Subject Attribute":
@@ -879,6 +880,59 @@ class FilterBuilderDialog(QDialog):
                     f"Failed to delete preset:\n{str(e)}"
                 )
     
+    @Slot()
+    def _show_help(self):
+        """Show the filtering help documentation."""
+        try:
+            # Get path to the help markdown file in resources
+            # The file is shipped with the app
+            
+            # Read from Qt resources
+            resource_file = QFile(":/filtering_help.md")
+            if not resource_file.open(QFile.OpenModeFlag.ReadOnly | QFile.OpenModeFlag.Text):
+                raise RuntimeError("Could not open help resource")
+            
+            stream = QTextStream(resource_file)
+            help_content = stream.readAll()
+            resource_file.close()
+            
+            # Create a temporary file to pass to TextViewerDialog
+            # (TextViewerDialog expects a file path)
+            with tempfile.NamedTemporaryFile(mode='w', suffix='.md', delete=False, encoding='utf-8') as f:
+                f.write(help_content)
+                temp_path = Path(f.name)
+            
+            # Show the help dialog
+            # Important: Pass None as parent to make it independent
+            # This prevents crashes when filter dialog closes before help dialog is destroyed
+            dialog = TextViewerDialog(temp_path, parent=None)
+            dialog.setWindowTitle("Filtering Subjects - Help")
+            dialog.resize(800, 600)
+            # Set window modality to application modal (blocks filter dialog)
+            dialog.setWindowModality(Qt.WindowModality.ApplicationModal)
+            dialog.exec()
+            
+            # Clean up temp file after a delay to allow WebEngine to finish
+            def cleanup_temp_file():
+                try:
+                    if temp_path.exists():
+                        temp_path.unlink()
+                except Exception as e:
+                    logger.debug(f"Could not delete temp file: {e}")
+            
+            # Delay cleanup by 500ms to ensure WebEngine has released the file
+            QTimer.singleShot(500, cleanup_temp_file)
+            
+            logger.debug("Displayed filtering help documentation")
+            
+        except Exception as e:
+            logger.error(f"Failed to show help: {e}", exc_info=True)
+            QMessageBox.warning(
+                self,
+                "Help Not Available",
+                f"Could not load help documentation:\n{str(e)}"
+            )
+    
     def get_filter_expression(self) -> Optional[LogicalOperation]:
         """
         Get the built filter expression.
@@ -892,8 +946,6 @@ class FilterBuilderDialog(QDialog):
     
     def _setup_advanced_ui(self):
         """Setup the Advanced mode UI components."""
-        # Import resources for icons
-        import bidsio.ui.resources.resources_rc
         
         # Set icons for toolbar actions
         self.ui.actionAddCondition.setIcon(QIcon(":/icons/add_icon.svg"))
@@ -967,6 +1019,7 @@ class FilterBuilderDialog(QDialog):
         # Preset buttons
         self.ui.savePresetButton.clicked.connect(self._save_preset)
         self.ui.loadPresetButton.clicked.connect(self._load_preset)
+        self.ui.helpButton.clicked.connect(self._show_help)
         
         # Simple mode: Add condition button
         self.ui.addConditionButton.clicked.connect(self._add_filter_row)

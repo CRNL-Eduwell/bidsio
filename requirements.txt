@@ -2,6 +2,7 @@
 
 # GUI framework
 pyside6>=6.6.0
+pyside6-webengine>=6.6.0
 qt-material>=2.14
 
 # BIDS dataset handling
