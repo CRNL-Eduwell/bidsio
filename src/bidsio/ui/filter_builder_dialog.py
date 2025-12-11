@@ -976,6 +976,7 @@ class FilterBuilderDialog(QDialog):
         # Clipboard for cut/copy/paste
         self._clipboard_item = None
         self._clipboard_is_cut = False
+        self._cut_item_reference = None  # Reference to the actual cut item
         
         # Show empty editor page initially
         self.ui.editorStackedWidget.setCurrentWidget(self.ui.emptyEditorPage)
@@ -1481,6 +1482,7 @@ class FilterBuilderDialog(QDialog):
         # Store in clipboard
         self._clipboard_item = self._advanced_clone_tree_item(item)
         self._clipboard_is_cut = True
+        self._cut_item_reference = item  # Store reference to the actual item
         
         # Visual feedback - gray out the item
         font = item.font(0)
@@ -1523,6 +1525,16 @@ class FilterBuilderDialog(QDialog):
             potential_parent = selected_items[0]
             parent_condition = potential_parent.data(0, Qt.ItemDataRole.UserRole)
             
+            # If it's a cut operation, prevent pasting into itself or its descendants
+            if self._clipboard_is_cut and self._cut_item_reference is not None:
+                if self._is_ancestor_or_self(self._cut_item_reference, potential_parent):
+                    QMessageBox.warning(
+                        self,
+                        "Cannot Paste",
+                        "Cannot paste a cut item into itself or its descendants."
+                    )
+                    return
+            
             # If selected item is a logical operation, paste as child
             if isinstance(parent_condition, LogicalOperation):
                 # Check if NOT and already has a child
@@ -1557,11 +1569,20 @@ class FilterBuilderDialog(QDialog):
             self.ui.filterTreeWidget.addTopLevelItem(pasted_item)
         
         # If it was cut, remove the original
-        if self._clipboard_is_cut:
-            # Find and remove the original cut item
-            self._advanced_remove_cut_item()
+        if self._clipboard_is_cut and self._cut_item_reference is not None:
+            # Remove the original cut item directly using stored reference
+            parent = self._cut_item_reference.parent()
+            if parent:
+                parent.removeChild(self._cut_item_reference)
+            else:
+                index = self.ui.filterTreeWidget.indexOfTopLevelItem(self._cut_item_reference)
+                if index >= 0:
+                    self.ui.filterTreeWidget.takeTopLevelItem(index)
+            
+            # Clear clipboard
             self._clipboard_item = None
             self._clipboard_is_cut = False
+            self._cut_item_reference = None
             self.ui.actionPaste.setEnabled(False)
         
         # Select the pasted item
@@ -1569,30 +1590,17 @@ class FilterBuilderDialog(QDialog):
         
         logger.debug("Pasted item from clipboard")
     
-    def _advanced_remove_cut_item(self):
-        """Remove the cut item from tree (after paste)."""
-        # Search for the item that has gray/italic styling
-        for i in range(self.ui.filterTreeWidget.topLevelItemCount()):
-            item = self.ui.filterTreeWidget.topLevelItem(i)
-            if item is not None and self._advanced_find_and_remove_cut_item(item):
-                return
-    
-    def _advanced_find_and_remove_cut_item(self, item: QTreeWidgetItem) -> bool:
-        """Recursively find and remove cut item."""
-        # Check if this item is styled as cut
-        if item.font(0).italic():
-            parent = item.parent()
-            if parent:
-                parent.removeChild(item)
-            else:
-                index = self.ui.filterTreeWidget.indexOfTopLevelItem(item)
-                self.ui.filterTreeWidget.takeTopLevelItem(index)
+    def _is_ancestor_or_self(self, ancestor: QTreeWidgetItem, item: QTreeWidgetItem) -> bool:
+        """Check if ancestor is the same as item or an ancestor of item."""
+        if ancestor == item:
             return True
         
-        # Check children
-        for i in range(item.childCount()):
-            if self._advanced_find_and_remove_cut_item(item.child(i)):
+        # Walk up the tree from item to see if we find ancestor
+        current = item.parent()
+        while current is not None:
+            if current == ancestor:
                 return True
+            current = current.parent()
         
         return False
     

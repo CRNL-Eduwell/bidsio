@@ -16,11 +16,10 @@ from bidsio.config.settings import get_settings
 # Try to import QtWebEngineWidgets for better HTML rendering
 try:
     from PySide6.QtWebEngineWidgets import QWebEngineView
-    from PySide6.QtWebEngineCore import QWebEngineProfile
     HAS_WEBENGINE = True
 except ImportError:
-    HAS_WEBENGINE = False
     from PySide6.QtWidgets import QTextBrowser
+    HAS_WEBENGINE = False
 
 # Try to import markdown library
 try:
@@ -158,26 +157,6 @@ class TextViewerDialog(QDialog):
                 if isinstance(self._viewer, QTextBrowser):
                     self._viewer.setPlainText(error_msg)
     
-    def _is_dark_theme(self) -> bool:
-        """Detect if the application is using a dark theme."""
-        try:
-            settings = get_settings()
-            # Theme names starting with "dark" are dark themes
-            return settings.theme.startswith('dark')
-        except Exception as e:
-            logger.debug(f"Failed to detect theme from settings: {e}")
-            # Fallback to palette detection
-            try:
-                app = QApplication.instance()
-                if app and isinstance(app, QApplication):
-                    palette = app.palette()
-                    bg_color = palette.color(QPalette.ColorRole.Window)
-                    bg_luminance = (0.299 * bg_color.red() + 0.587 * bg_color.green() + 0.114 * bg_color.blue()) / 255
-                    return bg_luminance < 0.5
-            except Exception:
-                pass
-        return False
-    
     def _render_markdown(self, content: str) -> str:
         """
         Render markdown to styled HTML.
@@ -195,9 +174,8 @@ class TextViewerDialog(QDialog):
         )
         
         # Detect theme and choose appropriate colors
-        is_dark = self._is_dark_theme()
-        
-        if is_dark:
+        settings = get_settings()
+        if settings.theme.startswith('dark'):
             # Dark theme colors (GitHub dark)
             colors = {
                 'bg': '#0d1117',
