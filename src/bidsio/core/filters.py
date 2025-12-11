@@ -121,7 +121,7 @@ def apply_filter(
     filtered_subjects = []
     
     for subject in dataset.subjects:
-        if filter_expr.evaluate(subject, dataset):
+        if filter_expr.evaluate(subject):
             filtered_subjects.append(subject)
     
     # Create new dataset with filtered subjects
@@ -153,7 +153,7 @@ def get_matching_subject_ids(
     matching_ids = []
     
     for subject in dataset.subjects:
-        if filter_expr.evaluate(subject, dataset):
+        if filter_expr.evaluate(subject):
             matching_ids.append(subject.subject_id)
     
     return matching_ids

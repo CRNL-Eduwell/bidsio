@@ -327,7 +327,7 @@ NOT: Child condition must not match (1 child only)</string>
                   <item>
                    <widget class="QLineEdit" name="subjectIdLineEdit">
                     <property name="placeholderText">
-                     <string>e.g., sub-01, sub-02</string>
+                     <string>e.g., 01</string>
                     </property>
                    </widget>
                   </item>

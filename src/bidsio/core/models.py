@@ -448,13 +448,12 @@ class FilterCondition:
     whether a subject matches the condition.
     """
     
-    def evaluate(self, subject: BIDSSubject, dataset: BIDSDataset) -> bool:
+    def evaluate(self, subject: BIDSSubject) -> bool:
         """
-        Evaluate whether a subject matches this filter condition.
+        Evaluate whether a subject matches this condition.
         
         Args:
             subject: The subject to evaluate.
-            dataset: The full dataset (for context if needed).
             
         Returns:
             True if the subject matches the condition, False otherwise.
@@ -486,49 +485,54 @@ class FilterCondition:
 
 @dataclass
 class SubjectIdFilter(FilterCondition):
-    """Filter by subject ID(s)."""
+    """Filter by subject ID."""
     
-    subject_ids: list[str] = field(default_factory=list)
-    """List of subject IDs to include."""
+    subject_id: str = ''
+    """Subject ID to match."""
     
-    def evaluate(self, subject: BIDSSubject, dataset: BIDSDataset) -> bool:
-        """Check if subject ID is in the list."""
-        if not self.subject_ids:
+    def evaluate(self, subject: BIDSSubject) -> bool:
+        """Check if subject ID matches."""
+        if not self.subject_id:
             return True
-        return subject.subject_id in self.subject_ids
+        return subject.subject_id == self.subject_id
     
     def to_dict(self) -> dict:
         return {
             'type': 'subject_id',
-            'subject_ids': self.subject_ids
+            'subject_id': self.subject_id
         }
     
     @classmethod
     def from_dict(cls, data: dict) -> 'SubjectIdFilter':
-        return cls(subject_ids=data.get('subject_ids', []))
+        # Handle old format with subject_ids list for backward compatibility
+        if 'subject_ids' in data:
+            subject_ids = data.get('subject_ids', [])
+            subject_id = subject_ids[0] if subject_ids else ''
+            return cls(subject_id=subject_id)
+        return cls(subject_id=data.get('subject_id', ''))
 
 
 @dataclass
 class ModalityFilter(FilterCondition):
     """Filter by imaging modality."""
     
-    modalities: list[str] = field(default_factory=list)
-    """List of modalities to include (e.g., ['ieeg', 'anat'])."""
+    modality: str = ''
+    """Modality to match (e.g., 'ieeg', 'anat')."""
     
-    def evaluate(self, subject: BIDSSubject, dataset: BIDSDataset) -> bool:
-        """Check if subject has files with any of the specified modalities."""
-        if not self.modalities:
+    def evaluate(self, subject: BIDSSubject) -> bool:
+        """Check if subject has files with the specified modality."""
+        if not self.modality:
             return True
         
         # Check all files in subject
         for file in subject.files:
-            if file.modality in self.modalities:
+            if file.modality == self.modality:
                 return True
         
         # Check all files in sessions
         for session in subject.sessions:
             for file in session.files:
-                if file.modality in self.modalities:
+                if file.modality == self.modality:
                     return True
         
         return False
@@ -536,12 +540,17 @@ class ModalityFilter(FilterCondition):
     def to_dict(self) -> dict:
         return {
             'type': 'modality',
-            'modalities': self.modalities
+            'modality': self.modality
         }
     
     @classmethod
     def from_dict(cls, data: dict) -> 'ModalityFilter':
-        return cls(modalities=data.get('modalities', []))
+        # Handle old format with modalities list for backward compatibility
+        if 'modalities' in data:
+            modalities = data.get('modalities', [])
+            modality = modalities[0] if modalities else ''
+            return cls(modality=modality)
+        return cls(modality=data.get('modality', ''))
 
 
 @dataclass
@@ -557,7 +566,7 @@ class ParticipantAttributeFilter(FilterCondition):
     value: str | int | float = ''
     """Value to compare against."""
     
-    def evaluate(self, subject: BIDSSubject, dataset: BIDSDataset) -> bool:
+    def evaluate(self, subject: BIDSSubject) -> bool:
         """Check if participant attribute matches the condition."""
         if not self.attribute_name or self.value == '':
             return True
@@ -636,7 +645,7 @@ class EntityFilter(FilterCondition):
     value: str = ''
     """Value to compare against."""
     
-    def evaluate(self, subject: BIDSSubject, dataset: BIDSDataset) -> bool:
+    def evaluate(self, subject: BIDSSubject) -> bool:
         """Check if subject has files with entity values matching the condition."""
         if not self.entity_code or self.value == '':
             return True
@@ -709,8 +718,8 @@ class ChannelAttributeFilter(FilterCondition):
     value: str | int | float = ''
     """Value to compare against."""
     
-    def evaluate(self, subject: BIDSSubject, dataset: BIDSDataset) -> bool:
-        """Check if any iEEG file has channels matching the criteria."""
+    def evaluate(self, subject: BIDSSubject) -> bool:
+        """Check if subject has iEEG channels matching the condition."""
         if not self.attribute_name or self.value == '':
             return True
         
@@ -800,8 +809,8 @@ class ElectrodeAttributeFilter(FilterCondition):
     value: str | int | float = ''
     """Value to compare against."""
     
-    def evaluate(self, subject: BIDSSubject, dataset: BIDSDataset) -> bool:
-        """Check if any iEEG file has electrodes matching the criteria."""
+    def evaluate(self, subject: BIDSSubject) -> bool:
+        """Check if subject has iEEG electrodes matching the condition."""
         if not self.attribute_name or self.value == '':
             return True
         
@@ -892,19 +901,19 @@ class LogicalOperation:
     conditions: list['FilterCondition | LogicalOperation'] = field(default_factory=list)
     """List of child conditions or nested logical operations."""
     
-    def evaluate(self, subject: BIDSSubject, dataset: BIDSDataset) -> bool:
+    def evaluate(self, subject: BIDSSubject) -> bool:
         """Evaluate the logical operation recursively."""
         if not self.conditions:
             return True
         
         if self.operator == 'AND':
-            return all(cond.evaluate(subject, dataset) for cond in self.conditions)
+            return all(cond.evaluate(subject) for cond in self.conditions)
         elif self.operator == 'OR':
-            return any(cond.evaluate(subject, dataset) for cond in self.conditions)
+            return any(cond.evaluate(subject) for cond in self.conditions)
         elif self.operator == 'NOT':
             # NOT operates on the first condition only
             if self.conditions:
-                return not self.conditions[0].evaluate(subject, dataset)
+                return not self.conditions[0].evaluate(subject)
             return True
         else:
             return False

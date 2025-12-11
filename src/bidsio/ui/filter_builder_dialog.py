@@ -16,7 +16,7 @@ from PySide6.QtWidgets import (
     QTreeWidgetItem, QMenu
 )
 from PySide6.QtCore import Slot, Qt
-from PySide6.QtGui import QIcon, QKeySequence, QShortcut
+from PySide6.QtGui import QIcon, QKeySequence, QShortcut, QBrush, QColor
 
 from bidsio.infrastructure.logging_config import get_logger
 from bidsio.infrastructure.paths import get_filter_presets_directory
@@ -120,24 +120,6 @@ class FilterBuilderDialog(QDialog):
         
         # Setup advanced mode UI
         self._setup_advanced_ui()
-    
-    def _connect_signals(self):
-        """Connect UI signals to slots."""
-        # Apply and Reset buttons
-        apply_button = self.ui.buttonBox.button(self.ui.buttonBox.StandardButton.Apply)
-        if apply_button:
-            apply_button.clicked.connect(self._apply_filter)
-        
-        reset_button = self.ui.buttonBox.button(self.ui.buttonBox.StandardButton.Reset)
-        if reset_button:
-            reset_button.clicked.connect(self._reset_filters)
-        
-        # Preset buttons
-        self.ui.savePresetButton.clicked.connect(self._save_preset)
-        self.ui.loadPresetButton.clicked.connect(self._load_preset)
-        
-        # Add condition button
-        self.ui.addConditionButton.clicked.connect(self._add_filter_row)
     
     def _add_filter_row(self, filter_type=None, subtype=None, operator=None, value=None):
         """
@@ -363,14 +345,14 @@ class FilterBuilderDialog(QDialog):
         # Create a row for each condition in the filter
         for condition in filter_expr.conditions:
             if isinstance(condition, SubjectIdFilter):
-                # Create one row per subject ID
-                for subject_id in condition.subject_ids:
-                    self._add_filter_row("Subject ID", None, "equals", subject_id)
+                # Add subject ID filter if it has a value
+                if condition.subject_id:
+                    self._add_filter_row("Subject ID", None, "equals", condition.subject_id)
             
             elif isinstance(condition, ModalityFilter):
-                # Create one row per modality
-                for modality in condition.modalities:
-                    self._add_filter_row("Modality", None, "equals", modality)
+                # Add modality filter if it has a value
+                if condition.modality:
+                    self._add_filter_row("Modality", None, "equals", condition.modality)
             
             elif isinstance(condition, EntityFilter):
                 # Create one row for the entity filter
@@ -456,11 +438,11 @@ class FilterBuilderDialog(QDialog):
             # Create condition based on type
             if filter_type == "Subject ID":
                 if value_text:
-                    conditions.append(SubjectIdFilter(subject_ids=[value_text]))
+                    conditions.append(SubjectIdFilter(subject_id=value_text))
             
             elif filter_type == "Modality":
                 if value_text:
-                    conditions.append(ModalityFilter(modalities=[value_text]))
+                    conditions.append(ModalityFilter(modality=value_text))
             
             elif filter_type == "Entity":
                 if subtype and value_text:
@@ -547,13 +529,16 @@ class FilterBuilderDialog(QDialog):
         # If single top-level item, convert it
         if self.ui.filterTreeWidget.topLevelItemCount() == 1:
             root_item = self.ui.filterTreeWidget.topLevelItem(0)
-            return self._tree_item_to_filter(root_item)
+            if root_item is not None:
+                return self._tree_item_to_filter(root_item)
+            return None
         
         # Multiple top-level items - wrap in AND
         conditions = []
         for i in range(self.ui.filterTreeWidget.topLevelItemCount()):
             item = self.ui.filterTreeWidget.topLevelItem(i)
-            condition = self._tree_item_to_filter(item)
+            if item is not None:
+                condition = self._tree_item_to_filter(item)
             if condition:
                 conditions.append(condition)
         
@@ -563,7 +548,7 @@ class FilterBuilderDialog(QDialog):
     
     def _tree_item_to_filter(self, item: QTreeWidgetItem):
         """Convert a tree item and its children to a filter condition."""
-        condition = item.data(0, Qt.UserRole)
+        condition = item.data(0, Qt.ItemDataRole.UserRole)
         
         # If it's a logical operation, recursively convert children
         if isinstance(condition, LogicalOperation):
@@ -921,10 +906,10 @@ class FilterBuilderDialog(QDialog):
         self.ui.actionPaste.setIcon(QIcon(":/icons/paste_icon.svg"))
         
         # Set keyboard shortcuts for actions
-        self.ui.actionDelete.setShortcut(QKeySequence(Qt.Key_Delete))
-        self.ui.actionCut.setShortcut(QKeySequence.Cut)
-        self.ui.actionCopy.setShortcut(QKeySequence.Copy)
-        self.ui.actionPaste.setShortcut(QKeySequence.Paste)
+        self.ui.actionDelete.setShortcut(QKeySequence(Qt.Key.Key_Delete))
+        self.ui.actionCut.setShortcut(QKeySequence(QKeySequence.StandardKey.Cut))
+        self.ui.actionCopy.setShortcut(QKeySequence(QKeySequence.StandardKey.Copy))
+        self.ui.actionPaste.setShortcut(QKeySequence(QKeySequence.StandardKey.Paste))
         self.ui.actionMoveUp.setShortcut(QKeySequence("Ctrl+Up"))
         self.ui.actionMoveDown.setShortcut(QKeySequence("Ctrl+Down"))
         
@@ -1025,57 +1010,9 @@ class FilterBuilderDialog(QDialog):
     
     def _setup_keyboard_shortcuts(self):
         """Setup keyboard shortcuts for common operations."""
-        # Advanced mode shortcuts (only active when Advanced tab is visible)
-        # Delete key
-        delete_shortcut = QShortcut(QKeySequence(Qt.Key_Delete), self)
-        delete_shortcut.activated.connect(self._handle_delete_shortcut)
-        
-        # Ctrl+X for cut
-        cut_shortcut = QShortcut(QKeySequence.Cut, self)
-        cut_shortcut.activated.connect(self._handle_cut_shortcut)
-        
-        # Ctrl+C for copy
-        copy_shortcut = QShortcut(QKeySequence.Copy, self)
-        copy_shortcut.activated.connect(self._handle_copy_shortcut)
-        
-        # Ctrl+V for paste
-        paste_shortcut = QShortcut(QKeySequence.Paste, self)
-        paste_shortcut.activated.connect(self._handle_paste_shortcut)
-        
-        # Ctrl+D for duplicate
+        # Ctrl+D for duplicate (actions already have their own shortcuts)
         duplicate_shortcut = QShortcut(QKeySequence("Ctrl+D"), self)
         duplicate_shortcut.activated.connect(self._handle_duplicate_shortcut)
-        
-        # Ctrl+Up/Down for moving
-        move_up_shortcut = QShortcut(QKeySequence("Ctrl+Up"), self)
-        move_up_shortcut.activated.connect(self._handle_move_up_shortcut)
-        
-        move_down_shortcut = QShortcut(QKeySequence("Ctrl+Down"), self)
-        move_down_shortcut.activated.connect(self._handle_move_down_shortcut)
-    
-    def _handle_delete_shortcut(self):
-        """Handle Delete key press."""
-        if self.ui.tabWidget.currentIndex() == 1:  # Advanced mode
-            if self.ui.filterTreeWidget.hasFocus() and self.ui.actionDelete.isEnabled():
-                self._advanced_delete_item()
-    
-    def _handle_cut_shortcut(self):
-        """Handle Ctrl+X shortcut."""
-        if self.ui.tabWidget.currentIndex() == 1:  # Advanced mode
-            if self.ui.filterTreeWidget.hasFocus() and self.ui.actionCut.isEnabled():
-                self._advanced_cut_item()
-    
-    def _handle_copy_shortcut(self):
-        """Handle Ctrl+C shortcut."""
-        if self.ui.tabWidget.currentIndex() == 1:  # Advanced mode
-            if self.ui.filterTreeWidget.hasFocus() and self.ui.actionCopy.isEnabled():
-                self._advanced_copy_item()
-    
-    def _handle_paste_shortcut(self):
-        """Handle Ctrl+V shortcut."""
-        if self.ui.tabWidget.currentIndex() == 1:  # Advanced mode
-            if self.ui.filterTreeWidget.hasFocus() and self.ui.actionPaste.isEnabled():
-                self._advanced_paste_item()
     
     def _handle_duplicate_shortcut(self):
         """Handle Ctrl+D shortcut."""
@@ -1086,18 +1023,6 @@ class FilterBuilderDialog(QDialog):
                     # Copy then paste = duplicate
                     self._advanced_copy_item()
                     self._advanced_paste_item()
-    
-    def _handle_move_up_shortcut(self):
-        """Handle Ctrl+Up shortcut."""
-        if self.ui.tabWidget.currentIndex() == 1:  # Advanced mode
-            if self.ui.filterTreeWidget.hasFocus() and self.ui.actionMoveUp.isEnabled():
-                self._advanced_move_up()
-    
-    def _handle_move_down_shortcut(self):
-        """Handle Ctrl+Down shortcut."""
-        if self.ui.tabWidget.currentIndex() == 1:  # Advanced mode
-            if self.ui.filterTreeWidget.hasFocus() and self.ui.actionMoveDown.isEnabled():
-                self._advanced_move_down()
     
     # ==================== Advanced Mode: Tree Management ====================
     
@@ -1139,7 +1064,7 @@ class FilterBuilderDialog(QDialog):
     
     def _advanced_show_editor_for_item(self, item: QTreeWidgetItem):
         """Show appropriate editor panel for selected tree item."""
-        condition = item.data(0, Qt.UserRole)
+        condition = item.data(0, Qt.ItemDataRole.UserRole)
         
         if isinstance(condition, LogicalOperation):
             # Show logical operator editor
@@ -1161,18 +1086,19 @@ class FilterBuilderDialog(QDialog):
             if isinstance(condition, SubjectIdFilter):
                 self.ui.conditionTypeComboBox.setCurrentText("Subject ID")
                 self.ui.conditionDetailsStackedWidget.setCurrentWidget(self.ui.subjectIdDetailsPage)
-                self.ui.subjectIdLineEdit.setText(', '.join(condition.subject_ids))
+                if condition.subject_id:
+                    self.ui.subjectIdLineEdit.setText(condition.subject_id)
                 
             elif isinstance(condition, ModalityFilter):
                 self.ui.conditionTypeComboBox.setCurrentText("Modality")
                 self.ui.conditionDetailsStackedWidget.setCurrentWidget(self.ui.modalityDetailsPage)
-                if condition.modalities:
-                    self.ui.modalityComboBox.setCurrentText(condition.modalities[0])
+                if condition.modality:
+                    self.ui.modalityComboBox.setCurrentText(condition.modality)
                     
             elif isinstance(condition, EntityFilter):
                 self.ui.conditionTypeComboBox.setCurrentText("Entity")
                 self.ui.conditionDetailsStackedWidget.setCurrentWidget(self.ui.entityDetailsPage)
-                self.ui.entityNameComboBox.setCurrentText(condition.entity_name)
+                self.ui.entityNameComboBox.setCurrentText(condition.entity_code)
                 self.ui.entityOperatorComboBox.setCurrentText(condition.operator)
                 self.ui.entityValueLineEdit.setText(condition.value)
                 
@@ -1249,13 +1175,33 @@ class FilterBuilderDialog(QDialog):
     
     def _advanced_create_and_add_item(self, item_type: str):
         """Create and add a new item to the tree."""
+        # Check if tree is empty - create default AND node for conditions
+        if self.ui.filterTreeWidget.topLevelItemCount() == 0:
+            # If adding a condition (not a logical operation), create AND node first
+            if item_type not in ['AND', 'OR', 'NOT']:
+                # Create AND node
+                and_condition = LogicalOperation(operator='AND', conditions=[])
+                and_item = self._advanced_create_tree_item(and_condition)
+                self.ui.filterTreeWidget.addTopLevelItem(and_item)
+                and_item.setExpanded(True)
+                
+                # Create the condition and add as child
+                condition = self._advanced_create_condition(item_type)
+                tree_item = self._advanced_create_tree_item(condition)
+                and_item.addChild(tree_item)
+                
+                # Select the new condition
+                self.ui.filterTreeWidget.setCurrentItem(tree_item)
+                logger.debug(f"Created default AND node and added {item_type} as child")
+                return
+        
         # Get parent item (selected item or None for root)
         selected_items = self.ui.filterTreeWidget.selectedItems()
         parent_item = None
         
         if selected_items:
             potential_parent = selected_items[0]
-            parent_condition = potential_parent.data(0, Qt.UserRole)
+            parent_condition = potential_parent.data(0, Qt.ItemDataRole.UserRole)
             
             # If selected item is a logical operation, add as child
             if isinstance(parent_condition, LogicalOperation):
@@ -1268,7 +1214,18 @@ class FilterBuilderDialog(QDialog):
                     )
                     return
                 parent_item = potential_parent
-            # Otherwise add as sibling (same level)
+            else:
+                # Selected item is a condition (leaf) - add as sibling by using its parent
+                parent_item = potential_parent.parent()
+        else:
+            # No selection - for conditions, add to the root node if it exists
+            if self.ui.filterTreeWidget.topLevelItemCount() > 0:
+                # Get first top-level item (should be the AND node)
+                root_item = self.ui.filterTreeWidget.topLevelItem(0)
+                if root_item is not None:
+                    root_condition = root_item.data(0, Qt.ItemDataRole.UserRole)
+                    if isinstance(root_condition, LogicalOperation):
+                        parent_item = root_item
         
         # Create the condition object
         condition = self._advanced_create_condition(item_type)
@@ -1297,13 +1254,13 @@ class FilterBuilderDialog(QDialog):
         elif item_type == 'NOT':
             return LogicalOperation(operator='NOT', conditions=[])
         elif item_type == 'subject_id':
-            return SubjectIdFilter(subject_ids=[])
+            return SubjectIdFilter(subject_id='')
         elif item_type == 'modality':
             modality = self._available_modalities[0] if self._available_modalities else ''
-            return ModalityFilter(modalities=[modality] if modality else [])
+            return ModalityFilter(modality=modality)
         elif item_type == 'entity':
-            entity_name = sorted(self._available_entities.keys())[0] if self._available_entities else ''
-            return EntityFilter(entity_name=entity_name, operator='equals', value='')
+            entity_code = sorted(self._available_entities.keys())[0] if self._available_entities else ''
+            return EntityFilter(entity_code=entity_code, operator='equals', value='')
         elif item_type == 'participant_attribute':
             attr_name = sorted(self._participant_attributes)[0] if self._participant_attributes else ''
             return ParticipantAttributeFilter(attribute_name=attr_name, operator='equals', value='')
@@ -1321,7 +1278,7 @@ class FilterBuilderDialog(QDialog):
         item = QTreeWidgetItem()
         
         # Store condition object
-        item.setData(0, Qt.UserRole, condition)
+        item.setData(0, Qt.ItemDataRole.UserRole, condition)
         
         # Set display text and icon
         if isinstance(condition, LogicalOperation):
@@ -1339,27 +1296,27 @@ class FilterBuilderDialog(QDialog):
         
         return item
     
-    def _advanced_get_condition_display(self, condition: FilterCondition) -> tuple[str, str]:
+    def _advanced_get_condition_display(self, condition: LogicalOperation | FilterCondition) -> tuple[str, str]:
         """Get display text and icon path for a condition."""
         if isinstance(condition, SubjectIdFilter):
-            if condition.subject_ids:
-                text = f"Subject ID: {', '.join(condition.subject_ids)}"
+            if condition.subject_id:
+                text = f"Subject ID: {condition.subject_id}"
             else:
                 text = "Subject ID: (empty)"
             return text, ":/icons/id_icon.svg"
         
         elif isinstance(condition, ModalityFilter):
-            if condition.modalities:
-                text = f"Modality: {', '.join(condition.modalities)}"
+            if condition.modality:
+                text = f"Modality: {condition.modality}"
             else:
                 text = "Modality: (empty)"
             return text, ":/icons/folder_icon.svg"
         
         elif isinstance(condition, EntityFilter):
-            if condition.entity_name and condition.value:
-                text = f"Entity: {condition.entity_name} {condition.operator} {condition.value}"
+            if condition.entity_code and condition.value:
+                text = f"Entity: {condition.entity_code} {condition.operator} {condition.value}"
             else:
-                text = f"Entity: {condition.entity_name or '(empty)'}"
+                text = f"Entity: {condition.entity_code or '(empty)'}"
             return text, ":/icons/label_icon.svg"
         
         elif isinstance(condition, ParticipantAttributeFilter):
@@ -1400,10 +1357,10 @@ class FilterBuilderDialog(QDialog):
                 self,
                 "Confirm Deletion",
                 f"This item has {item.childCount()} child(ren). Delete anyway?",
-                QMessageBox.Yes | QMessageBox.No,
-                QMessageBox.No
+                QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+                QMessageBox.StandardButton.No
             )
-            if reply != QMessageBox.Yes:
+            if reply != QMessageBox.StandardButton.Yes:
                 return
         
         # Remove from tree
@@ -1476,7 +1433,7 @@ class FilterBuilderDialog(QDialog):
         font = item.font(0)
         font.setItalic(True)
         item.setFont(0, font)
-        item.setForeground(0, Qt.gray)
+        item.setForeground(0, QBrush(QColor(Qt.GlobalColor.gray)))
         
         # Enable paste
         self.ui.actionPaste.setEnabled(True)
@@ -1507,10 +1464,11 @@ class FilterBuilderDialog(QDialog):
         
         selected_items = self.ui.filterTreeWidget.selectedItems()
         parent_item = None
+        insert_index = None
         
         if selected_items:
             potential_parent = selected_items[0]
-            parent_condition = potential_parent.data(0, Qt.UserRole)
+            parent_condition = potential_parent.data(0, Qt.ItemDataRole.UserRole)
             
             # If selected item is a logical operation, paste as child
             if isinstance(parent_condition, LogicalOperation):
@@ -1523,13 +1481,24 @@ class FilterBuilderDialog(QDialog):
                     )
                     return
                 parent_item = potential_parent
+            else:
+                # Selected item is a condition (leaf) - insert as sibling
+                parent_item = potential_parent.parent()
+                if parent_item:
+                    # Insert after the selected item
+                    insert_index = parent_item.indexOfChild(potential_parent) + 1
         
         # Clone the clipboard item (in case we paste multiple times)
         pasted_item = self._advanced_clone_tree_item(self._clipboard_item)
         
         # Add to tree
         if parent_item:
-            parent_item.addChild(pasted_item)
+            if insert_index is not None:
+                # Insert at specific position (sibling)
+                parent_item.insertChild(insert_index, pasted_item)
+            else:
+                # Add as last child
+                parent_item.addChild(pasted_item)
             parent_item.setExpanded(True)
         else:
             self.ui.filterTreeWidget.addTopLevelItem(pasted_item)
@@ -1552,7 +1521,7 @@ class FilterBuilderDialog(QDialog):
         # Search for the item that has gray/italic styling
         for i in range(self.ui.filterTreeWidget.topLevelItemCount()):
             item = self.ui.filterTreeWidget.topLevelItem(i)
-            if self._advanced_find_and_remove_cut_item(item):
+            if item is not None and self._advanced_find_and_remove_cut_item(item):
                 return
     
     def _advanced_find_and_remove_cut_item(self, item: QTreeWidgetItem) -> bool:
@@ -1577,7 +1546,7 @@ class FilterBuilderDialog(QDialog):
     def _advanced_clone_tree_item(self, item: QTreeWidgetItem) -> QTreeWidgetItem:
         """Deep clone a tree item with all children."""
         # Get the condition and deep copy it
-        condition = item.data(0, Qt.UserRole)
+        condition = item.data(0, Qt.ItemDataRole.UserRole)
         cloned_condition = self._advanced_deep_copy_condition(condition)
         
         # Create new tree item
@@ -1598,12 +1567,12 @@ class FilterBuilderDialog(QDialog):
                 conditions=[self._advanced_deep_copy_condition(c) for c in condition.conditions]
             )
         elif isinstance(condition, SubjectIdFilter):
-            return SubjectIdFilter(subject_ids=condition.subject_ids.copy())
+            return SubjectIdFilter(subject_id=condition.subject_id)
         elif isinstance(condition, ModalityFilter):
-            return ModalityFilter(modalities=condition.modalities.copy())
+            return ModalityFilter(modality=condition.modality)
         elif isinstance(condition, EntityFilter):
             return EntityFilter(
-                entity_name=condition.entity_name,
+                entity_code=condition.entity_code,
                 operator=condition.operator,
                 value=condition.value
             )
@@ -1679,7 +1648,7 @@ class FilterBuilderDialog(QDialog):
             return
         
         item = selected_items[0]
-        condition = item.data(0, Qt.UserRole)
+        condition = item.data(0, Qt.ItemDataRole.UserRole)
         
         if isinstance(condition, LogicalOperation):
             new_operator = self.ui.logicalOperatorComboBox.currentText()
@@ -1717,7 +1686,7 @@ class FilterBuilderDialog(QDialog):
             return
         
         item = selected_items[0]
-        old_condition = item.data(0, Qt.UserRole)
+        old_condition = item.data(0, Qt.ItemDataRole.UserRole)
         
         # Only proceed if it's actually a condition (not logical operation)
         if not isinstance(old_condition, FilterCondition):
@@ -1744,7 +1713,7 @@ class FilterBuilderDialog(QDialog):
         new_condition = self._advanced_create_condition(item_type)
         
         # Update tree item
-        item.setData(0, Qt.UserRole, new_condition)
+        item.setData(0, Qt.ItemDataRole.UserRole, new_condition)
         text, icon_path = self._advanced_get_condition_display(new_condition)
         item.setText(0, text)
         item.setIcon(0, QIcon(icon_path))
@@ -1757,16 +1726,16 @@ class FilterBuilderDialog(QDialog):
         self._advanced_populate_editor_for_condition(new_condition, index)
         self._block_editor_signals(False)
     
-    def _advanced_populate_editor_for_condition(self, condition: FilterCondition, page_index: int):
+    def _advanced_populate_editor_for_condition(self, condition: LogicalOperation | FilterCondition, page_index: int):
         """Populate editor fields for a condition."""
         if page_index == 0:  # Subject ID
             self.ui.subjectIdLineEdit.clear()
         elif page_index == 1:  # Modality
-            if isinstance(condition, ModalityFilter) and condition.modalities:
-                self.ui.modalityComboBox.setCurrentText(condition.modalities[0])
+            if isinstance(condition, ModalityFilter) and condition.modality:
+                self.ui.modalityComboBox.setCurrentText(condition.modality)
         elif page_index == 2:  # Entity
             if isinstance(condition, EntityFilter):
-                self.ui.entityNameComboBox.setCurrentText(condition.entity_name)
+                self.ui.entityNameComboBox.setCurrentText(condition.entity_code)
                 self.ui.entityOperatorComboBox.setCurrentText(condition.operator)
                 self.ui.entityValueLineEdit.clear()
         elif page_index == 3:  # Participant Attribute
@@ -1792,19 +1761,19 @@ class FilterBuilderDialog(QDialog):
             return
         
         item = selected_items[0]
-        condition = item.data(0, Qt.UserRole)
+        condition = item.data(0, Qt.ItemDataRole.UserRole)
         
         # Update condition based on current editor state
         if isinstance(condition, SubjectIdFilter):
-            text = self.ui.subjectIdLineEdit.text()
-            condition.subject_ids = [s.strip() for s in text.split(',') if s.strip()]
+            text = self.ui.subjectIdLineEdit.text().strip()
+            condition.subject_id = text
         
         elif isinstance(condition, ModalityFilter):
             modality = self.ui.modalityComboBox.currentText()
-            condition.modalities = [modality] if modality else []
+            condition.modality = modality if modality else ''
         
         elif isinstance(condition, EntityFilter):
-            condition.entity_name = self.ui.entityNameComboBox.currentText()
+            condition.entity_code = self.ui.entityNameComboBox.currentText()
             condition.operator = self.ui.entityOperatorComboBox.currentText()
             condition.value = self.ui.entityValueLineEdit.text()
         
@@ -1849,9 +1818,8 @@ class FilterBuilderDialog(QDialog):
             self._convert_advanced_to_simple()
         
         elif index == 1:  # Switching to Advanced mode
-            # Convert Simple to Advanced if tree is empty
-            if self.ui.filterTreeWidget.topLevelItemCount() == 0:
-                self._convert_simple_to_advanced()
+            # Always convert Simple to Advanced to ensure sync
+            self._convert_simple_to_advanced()
     
     def _can_convert_advanced_to_simple(self) -> bool:
         """Check if Advanced filter can be converted to Simple mode."""
@@ -1864,7 +1832,10 @@ class FilterBuilderDialog(QDialog):
             return False
         
         root_item = self.ui.filterTreeWidget.topLevelItem(0)
-        root_condition = root_item.data(0, Qt.UserRole)
+        if root_item is None:
+            return True
+        
+        root_condition = root_item.data(0, Qt.ItemDataRole.UserRole)
         
         # Root must be an AND operation
         if not isinstance(root_condition, LogicalOperation) or root_condition.operator != 'AND':
@@ -1873,9 +1844,10 @@ class FilterBuilderDialog(QDialog):
         # All children must be conditions (no nested logical operations)
         for i in range(root_item.childCount()):
             child = root_item.child(i)
-            child_condition = child.data(0, Qt.UserRole)
-            if isinstance(child_condition, LogicalOperation):
-                return False
+            if child is not None:
+                child_condition = child.data(0, Qt.ItemDataRole.UserRole)
+                if isinstance(child_condition, LogicalOperation):
+                    return False
         
         return True
     
@@ -1898,27 +1870,30 @@ class FilterBuilderDialog(QDialog):
         
         # Get root AND node
         root_item = self.ui.filterTreeWidget.topLevelItem(0)
+        if root_item is None:
+            return
         
         # Convert each child to a Simple mode row
         for i in range(root_item.childCount()):
             child = root_item.child(i)
-            condition = child.data(0, Qt.UserRole)
-            self._convert_condition_to_simple_row(condition)
+            if child is not None:
+                condition = child.data(0, Qt.ItemDataRole.UserRole)
+                self._convert_condition_to_simple_row(condition)
     
     def _convert_condition_to_simple_row(self, condition: FilterCondition):
         """Convert a single condition to a Simple mode row."""
         if isinstance(condition, SubjectIdFilter):
-            value = ', '.join(condition.subject_ids) if condition.subject_ids else ''
+            value = condition.subject_id if condition.subject_id else ''
             self._add_filter_row(filter_type="Subject ID", value=value)
         
         elif isinstance(condition, ModalityFilter):
-            value = ', '.join(condition.modalities) if condition.modalities else ''
-            self._add_filter_row(filter_type="Modality", subtype=condition.modalities[0] if condition.modalities else None)
+            value = condition.modality if condition.modality else ''
+            self._add_filter_row(filter_type="Modality", subtype=condition.modality if condition.modality else None)
         
         elif isinstance(condition, EntityFilter):
             self._add_filter_row(
                 filter_type="Entity",
-                subtype=condition.entity_name,
+                subtype=condition.entity_code,
                 operator=condition.operator,
                 value=condition.value
             )
@@ -1979,15 +1954,15 @@ class FilterBuilderDialog(QDialog):
         value = row_data['value_input'].text()
         
         if filter_type == "Subject ID":
-            subject_ids = [s.strip() for s in value.split(',') if s.strip()]
-            return SubjectIdFilter(subject_ids=subject_ids)
+            # Value is a single subject ID, no splitting needed
+            return SubjectIdFilter(subject_id=value.strip())
         
         elif filter_type == "Modality":
-            return ModalityFilter(modalities=[subtype] if subtype else [])
+            return ModalityFilter(modality=subtype if subtype else '')
         
         elif filter_type == "Entity":
             return EntityFilter(
-                entity_name=subtype,
+                entity_code=subtype,
                 operator=operator,
                 value=value
             )
@@ -2022,3 +1997,4 @@ class FilterBuilderDialog(QDialog):
 # TODO: Implement filter validation before application
 # TODO: Add keyboard shortcuts for common operations
 # TODO: Support filter composition (combining multiple saved presets)
+

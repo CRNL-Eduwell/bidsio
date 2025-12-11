@@ -191,30 +191,30 @@ class TestSubjectIdFilter:
     """Tests for SubjectIdFilter."""
     
     def test_empty_filter_matches_all(self, basic_dataset):
-        """Empty subject ID list should match all subjects."""
-        filter_obj = SubjectIdFilter(subject_ids=[])
+        """Empty subject ID should match all subjects."""
+        filter_obj = SubjectIdFilter(subject_id='')
         
         for subject in basic_dataset.subjects:
-            assert filter_obj.evaluate(subject, basic_dataset)
+            assert filter_obj.evaluate(subject)
     
     def test_filter_matches_specific_subjects(self, basic_dataset):
-        """Filter should match only specified subject IDs."""
-        filter_obj = SubjectIdFilter(subject_ids=["01", "03"])
+        """Filter should match only specified subject ID."""
+        filter_obj = SubjectIdFilter(subject_id="01")
         
-        assert filter_obj.evaluate(basic_dataset.subjects[0], basic_dataset)  # "01"
-        assert not filter_obj.evaluate(basic_dataset.subjects[1], basic_dataset)  # "02"
-        assert filter_obj.evaluate(basic_dataset.subjects[2], basic_dataset)  # "03"
+        assert filter_obj.evaluate(basic_dataset.subjects[0])  # "01"
+        assert not filter_obj.evaluate(basic_dataset.subjects[1])  # "02"
+        assert not filter_obj.evaluate(basic_dataset.subjects[2])  # "03"
     
     def test_serialization(self):
         """Test to_dict and from_dict."""
-        original = SubjectIdFilter(subject_ids=["01", "02"])
+        original = SubjectIdFilter(subject_id="01")
         
         data = original.to_dict()
         assert data['type'] == 'subject_id'
-        assert data['subject_ids'] == ["01", "02"]
+        assert data['subject_id'] == "01"
         
         restored = SubjectIdFilter.from_dict(data)
-        assert restored.subject_ids == original.subject_ids
+        assert restored.subject_id == original.subject_id
 
 
 # ============================================================================
@@ -225,30 +225,22 @@ class TestModalityFilter:
     """Tests for ModalityFilter."""
     
     def test_empty_filter_matches_all(self, dataset_with_modalities):
-        """Empty modality list should match all subjects."""
-        filter_obj = ModalityFilter(modalities=[])
+        """Empty modality should match all subjects."""
+        filter_obj = ModalityFilter(modality='')
         
         for subject in dataset_with_modalities.subjects:
-            assert filter_obj.evaluate(subject, dataset_with_modalities)
+            assert filter_obj.evaluate(subject)
     
     def test_filter_matches_subjects_with_modality(self, dataset_with_modalities):
         """Filter should match subjects with specified modality."""
-        filter_obj = ModalityFilter(modalities=["ieeg"])
+        filter_obj = ModalityFilter(modality="ieeg")
         
         # Subject 01: has ieeg
-        assert filter_obj.evaluate(dataset_with_modalities.subjects[0], dataset_with_modalities)
+        assert filter_obj.evaluate(dataset_with_modalities.subjects[0])
         # Subject 02: has only anat
-        assert not filter_obj.evaluate(dataset_with_modalities.subjects[1], dataset_with_modalities)
+        assert not filter_obj.evaluate(dataset_with_modalities.subjects[1])
         # Subject 03: has both
-        assert filter_obj.evaluate(dataset_with_modalities.subjects[2], dataset_with_modalities)
-    
-    def test_filter_with_multiple_modalities(self, dataset_with_modalities):
-        """Filter with multiple modalities should match any."""
-        filter_obj = ModalityFilter(modalities=["ieeg", "anat"])
-        
-        # All subjects have at least one of these modalities
-        for subject in dataset_with_modalities.subjects:
-            assert filter_obj.evaluate(subject, dataset_with_modalities)
+        assert filter_obj.evaluate(dataset_with_modalities.subjects[2])
     
     def test_filter_with_session_files(self):
         """Filter should check files in sessions too."""
@@ -264,19 +256,19 @@ class TestModalityFilter:
         
         dataset.subjects = [subject]
         
-        filter_obj = ModalityFilter(modalities=["func"])
-        assert filter_obj.evaluate(subject, dataset)
+        filter_obj = ModalityFilter(modality="func")
+        assert filter_obj.evaluate(subject)
     
     def test_serialization(self):
         """Test to_dict and from_dict."""
-        original = ModalityFilter(modalities=["ieeg", "anat"])
+        original = ModalityFilter(modality="ieeg")
         
         data = original.to_dict()
         assert data['type'] == 'modality'
-        assert data['modalities'] == ["ieeg", "anat"]
+        assert data['modality'] == "ieeg"
         
         restored = ModalityFilter.from_dict(data)
-        assert restored.modalities == original.modalities
+        assert restored.modality == original.modality
 
 
 # ============================================================================
@@ -291,40 +283,40 @@ class TestEntityFilter:
         filter_obj = EntityFilter(entity_code="task", operator="equals", value="VISU")
         
         # Subject 01: has task-VISU
-        assert filter_obj.evaluate(dataset_with_entities.subjects[0], dataset_with_entities)
+        assert filter_obj.evaluate(dataset_with_entities.subjects[0])
         # Subject 02: has only task-REST
-        assert not filter_obj.evaluate(dataset_with_entities.subjects[1], dataset_with_entities)
+        assert not filter_obj.evaluate(dataset_with_entities.subjects[1])
         # Subject 03: has both
-        assert filter_obj.evaluate(dataset_with_entities.subjects[2], dataset_with_entities)
+        assert filter_obj.evaluate(dataset_with_entities.subjects[2])
     
     def test_filter_by_task_not_equals(self, dataset_with_entities):
         """Filter by task entity with not_equals operator."""
         filter_obj = EntityFilter(entity_code="task", operator="not_equals", value="VISU")
         
         # Subject 01: has only task-VISU (not_equals fails)
-        assert not filter_obj.evaluate(dataset_with_entities.subjects[0], dataset_with_entities)
+        assert not filter_obj.evaluate(dataset_with_entities.subjects[0])
         # Subject 02: has only task-REST (not_equals succeeds)
-        assert filter_obj.evaluate(dataset_with_entities.subjects[1], dataset_with_entities)
+        assert filter_obj.evaluate(dataset_with_entities.subjects[1])
         # Subject 03: has both tasks (has REST which != VISU)
-        assert filter_obj.evaluate(dataset_with_entities.subjects[2], dataset_with_entities)
+        assert filter_obj.evaluate(dataset_with_entities.subjects[2])
     
     def test_filter_by_task_contains(self, dataset_with_entities):
         """Filter by task entity with contains operator."""
         filter_obj = EntityFilter(entity_code="task", operator="contains", value="VIS")
         
         # Subject 01: has task-VISU (contains "VIS")
-        assert filter_obj.evaluate(dataset_with_entities.subjects[0], dataset_with_entities)
+        assert filter_obj.evaluate(dataset_with_entities.subjects[0])
         # Subject 02: has only task-REST (doesn't contain "VIS")
-        assert not filter_obj.evaluate(dataset_with_entities.subjects[1], dataset_with_entities)
+        assert not filter_obj.evaluate(dataset_with_entities.subjects[1])
         # Subject 03: has both (has VISU which contains "VIS")
-        assert filter_obj.evaluate(dataset_with_entities.subjects[2], dataset_with_entities)
+        assert filter_obj.evaluate(dataset_with_entities.subjects[2])
     
     def test_empty_value_matches_all(self, dataset_with_entities):
         """Empty value should match all subjects."""
         filter_obj = EntityFilter(entity_code="task", operator="equals", value="")
         
         for subject in dataset_with_entities.subjects:
-            assert filter_obj.evaluate(subject, dataset_with_entities)
+            assert filter_obj.evaluate(subject)
     
     def test_serialization(self):
         """Test to_dict and from_dict."""
@@ -358,11 +350,11 @@ class TestParticipantAttributeFilter:
         )
         
         # Subject 01: sex=M
-        assert filter_obj.evaluate(dataset_with_participants.subjects[0], dataset_with_participants)
+        assert filter_obj.evaluate(dataset_with_participants.subjects[0])
         # Subject 02: sex=F
-        assert not filter_obj.evaluate(dataset_with_participants.subjects[1], dataset_with_participants)
+        assert not filter_obj.evaluate(dataset_with_participants.subjects[1])
         # Subject 03: sex=M
-        assert filter_obj.evaluate(dataset_with_participants.subjects[2], dataset_with_participants)
+        assert filter_obj.evaluate(dataset_with_participants.subjects[2])
     
     def test_not_equals_operator(self, dataset_with_participants):
         """Test not_equals operator."""
@@ -373,11 +365,11 @@ class TestParticipantAttributeFilter:
         )
         
         # Subject 01: group=control
-        assert not filter_obj.evaluate(dataset_with_participants.subjects[0], dataset_with_participants)
+        assert not filter_obj.evaluate(dataset_with_participants.subjects[0])
         # Subject 02: group=patient
-        assert filter_obj.evaluate(dataset_with_participants.subjects[1], dataset_with_participants)
+        assert filter_obj.evaluate(dataset_with_participants.subjects[1])
         # Subject 03: group=patient
-        assert filter_obj.evaluate(dataset_with_participants.subjects[2], dataset_with_participants)
+        assert filter_obj.evaluate(dataset_with_participants.subjects[2])
     
     def test_contains_operator(self, dataset_with_participants):
         """Test contains operator."""
@@ -388,10 +380,10 @@ class TestParticipantAttributeFilter:
         )
         
         # Subject 01: group=control (doesn't contain "pat")
-        assert not filter_obj.evaluate(dataset_with_participants.subjects[0], dataset_with_participants)
+        assert not filter_obj.evaluate(dataset_with_participants.subjects[0])
         # Subjects 02 and 03: group=patient (contains "pat")
-        assert filter_obj.evaluate(dataset_with_participants.subjects[1], dataset_with_participants)
-        assert filter_obj.evaluate(dataset_with_participants.subjects[2], dataset_with_participants)
+        assert filter_obj.evaluate(dataset_with_participants.subjects[1])
+        assert filter_obj.evaluate(dataset_with_participants.subjects[2])
     
     def test_greater_than_operator_numeric(self, dataset_with_participants):
         """Test greater_than operator with numeric values."""
@@ -402,11 +394,11 @@ class TestParticipantAttributeFilter:
         )
         
         # Subject 01: age=25 (not > 27)
-        assert not filter_obj.evaluate(dataset_with_participants.subjects[0], dataset_with_participants)
+        assert not filter_obj.evaluate(dataset_with_participants.subjects[0])
         # Subject 02: age=30 (> 27)
-        assert filter_obj.evaluate(dataset_with_participants.subjects[1], dataset_with_participants)
+        assert filter_obj.evaluate(dataset_with_participants.subjects[1])
         # Subject 03: age=28 (> 27)
-        assert filter_obj.evaluate(dataset_with_participants.subjects[2], dataset_with_participants)
+        assert filter_obj.evaluate(dataset_with_participants.subjects[2])
     
     def test_less_than_operator_numeric(self, dataset_with_participants):
         """Test less_than operator with numeric values."""
@@ -417,11 +409,11 @@ class TestParticipantAttributeFilter:
         )
         
         # Subject 01: age=25 (< 29)
-        assert filter_obj.evaluate(dataset_with_participants.subjects[0], dataset_with_participants)
+        assert filter_obj.evaluate(dataset_with_participants.subjects[0])
         # Subject 02: age=30 (not < 29)
-        assert not filter_obj.evaluate(dataset_with_participants.subjects[1], dataset_with_participants)
+        assert not filter_obj.evaluate(dataset_with_participants.subjects[1])
         # Subject 03: age=28 (< 29)
-        assert filter_obj.evaluate(dataset_with_participants.subjects[2], dataset_with_participants)
+        assert filter_obj.evaluate(dataset_with_participants.subjects[2])
     
     def test_missing_participant_data(self, basic_dataset):
         """Test behavior when participants.tsv doesn't exist."""
@@ -433,7 +425,7 @@ class TestParticipantAttributeFilter:
         
         # Should return False for all subjects when data missing
         for subject in basic_dataset.subjects:
-            assert not filter_obj.evaluate(subject, basic_dataset)
+            assert not filter_obj.evaluate(subject)
     
     def test_serialization(self):
         """Test to_dict and from_dict."""
@@ -471,11 +463,11 @@ class TestChannelAttributeFilter:
         )
         
         # Subject 01: has channels with low_cutoff='0.5Hz'
-        assert filter_obj.evaluate(dataset_with_ieeg.subjects[0], dataset_with_ieeg)
+        assert filter_obj.evaluate(dataset_with_ieeg.subjects[0])
         # Subject 02: has channels with low_cutoff='1.0Hz'
-        assert not filter_obj.evaluate(dataset_with_ieeg.subjects[1], dataset_with_ieeg)
+        assert not filter_obj.evaluate(dataset_with_ieeg.subjects[1])
         # Subject 03: no iEEG data
-        assert not filter_obj.evaluate(dataset_with_ieeg.subjects[2], dataset_with_ieeg)
+        assert not filter_obj.evaluate(dataset_with_ieeg.subjects[2])
     
     def test_contains_operator(self, dataset_with_ieeg):
         """Test contains operator with channel attribute."""
@@ -486,9 +478,9 @@ class TestChannelAttributeFilter:
         )
         
         # Subject 01: has channels with low_cutoff='0.5Hz'
-        assert filter_obj.evaluate(dataset_with_ieeg.subjects[0], dataset_with_ieeg)
+        assert filter_obj.evaluate(dataset_with_ieeg.subjects[0])
         # Subject 02: has channels with low_cutoff='1.0Hz'
-        assert not filter_obj.evaluate(dataset_with_ieeg.subjects[1], dataset_with_ieeg)
+        assert not filter_obj.evaluate(dataset_with_ieeg.subjects[1])
     
     def test_no_ieeg_data(self, basic_dataset):
         """Test behavior when subject has no iEEG data."""
@@ -500,7 +492,7 @@ class TestChannelAttributeFilter:
         
         # Should return False for all subjects without iEEG data
         for subject in basic_dataset.subjects:
-            assert not filter_obj.evaluate(subject, basic_dataset)
+            assert not filter_obj.evaluate(subject)
     
     def test_serialization(self):
         """Test to_dict and from_dict."""
@@ -538,11 +530,11 @@ class TestElectrodeAttributeFilter:
         )
         
         # Subject 01: has electrodes with material='platinum'
-        assert filter_obj.evaluate(dataset_with_ieeg.subjects[0], dataset_with_ieeg)
+        assert filter_obj.evaluate(dataset_with_ieeg.subjects[0])
         # Subject 02: has electrodes with material='gold'
-        assert not filter_obj.evaluate(dataset_with_ieeg.subjects[1], dataset_with_ieeg)
+        assert not filter_obj.evaluate(dataset_with_ieeg.subjects[1])
         # Subject 03: no iEEG data
-        assert not filter_obj.evaluate(dataset_with_ieeg.subjects[2], dataset_with_ieeg)
+        assert not filter_obj.evaluate(dataset_with_ieeg.subjects[2])
     
     def test_not_equals_operator(self, dataset_with_ieeg):
         """Test not_equals operator with electrode attribute."""
@@ -553,9 +545,9 @@ class TestElectrodeAttributeFilter:
         )
         
         # Subject 01: has electrodes with material='platinum'
-        assert not filter_obj.evaluate(dataset_with_ieeg.subjects[0], dataset_with_ieeg)
+        assert not filter_obj.evaluate(dataset_with_ieeg.subjects[0])
         # Subject 02: has electrodes with material='gold'
-        assert filter_obj.evaluate(dataset_with_ieeg.subjects[1], dataset_with_ieeg)
+        assert filter_obj.evaluate(dataset_with_ieeg.subjects[1])
     
     def test_serialization(self):
         """Test to_dict and from_dict."""
@@ -588,67 +580,69 @@ class TestLogicalOperation:
         """Test AND logical operation."""
         # Create filter: task='VISU' AND subject_id='03'
         filter1 = EntityFilter(entity_code="task", operator="equals", value="VISU")
-        filter2 = SubjectIdFilter(subject_ids=["03"])
+        filter2 = SubjectIdFilter(subject_id="03")
         
         and_op = LogicalOperation(operator="AND", conditions=[filter1, filter2])
         
         # Subject 01: has VISU but not id=03
-        assert not and_op.evaluate(dataset_with_entities.subjects[0], dataset_with_entities)
+        assert not and_op.evaluate(dataset_with_entities.subjects[0])
         # Subject 02: doesn't have VISU
-        assert not and_op.evaluate(dataset_with_entities.subjects[1], dataset_with_entities)
+        assert not and_op.evaluate(dataset_with_entities.subjects[1])
         # Subject 03: has VISU AND id=03
-        assert and_op.evaluate(dataset_with_entities.subjects[2], dataset_with_entities)
+        assert and_op.evaluate(dataset_with_entities.subjects[2])
     
     def test_or_operation(self, dataset_with_entities):
         """Test OR logical operation."""
         # Create filter: subject_id='01' OR subject_id='02'
-        filter1 = SubjectIdFilter(subject_ids=["01"])
-        filter2 = SubjectIdFilter(subject_ids=["02"])
+        filter1 = SubjectIdFilter(subject_id="01")
+        filter2 = SubjectIdFilter(subject_id="02")
         
         or_op = LogicalOperation(operator="OR", conditions=[filter1, filter2])
         
         # Subject 01: matches first condition
-        assert or_op.evaluate(dataset_with_entities.subjects[0], dataset_with_entities)
+        assert or_op.evaluate(dataset_with_entities.subjects[0])
         # Subject 02: matches second condition
-        assert or_op.evaluate(dataset_with_entities.subjects[1], dataset_with_entities)
+        assert or_op.evaluate(dataset_with_entities.subjects[1])
         # Subject 03: matches neither
-        assert not or_op.evaluate(dataset_with_entities.subjects[2], dataset_with_entities)
+        assert not or_op.evaluate(dataset_with_entities.subjects[2])
     
     def test_not_operation(self, basic_dataset):
         """Test NOT logical operation."""
         # Create filter: NOT(subject_id='02')
-        filter1 = SubjectIdFilter(subject_ids=["02"])
+        filter1 = SubjectIdFilter(subject_id="02")
         
         not_op = LogicalOperation(operator="NOT", conditions=[filter1])
         
         # Subject 01: not id=02
-        assert not_op.evaluate(basic_dataset.subjects[0], basic_dataset)
+        assert not_op.evaluate(basic_dataset.subjects[0])
         # Subject 02: is id=02 (NOT inverts it)
-        assert not not_op.evaluate(basic_dataset.subjects[1], basic_dataset)
+        assert not not_op.evaluate(basic_dataset.subjects[1])
         # Subject 03: not id=02
-        assert not_op.evaluate(basic_dataset.subjects[2], basic_dataset)
+        assert not_op.evaluate(basic_dataset.subjects[2])
     
     def test_nested_operations(self, dataset_with_modalities):
         """Test nested logical operations."""
-        # Create filter: (modality='ieeg' OR modality='anat') AND subject_id IN ['01', '03']
-        filter1 = ModalityFilter(modalities=["ieeg"])
-        filter2 = ModalityFilter(modalities=["anat"])
+        # Create filter: (modality='ieeg' OR modality='anat') AND (subject_id='01' OR subject_id='03')
+        filter1 = ModalityFilter(modality="ieeg")
+        filter2 = ModalityFilter(modality="anat")
         or_op = LogicalOperation(operator="OR", conditions=[filter1, filter2])
         
-        filter3 = SubjectIdFilter(subject_ids=["01", "03"])
-        and_op = LogicalOperation(operator="AND", conditions=[or_op, filter3])
+        filter3 = SubjectIdFilter(subject_id="01")
+        filter4 = SubjectIdFilter(subject_id="03")
+        or_op2 = LogicalOperation(operator="OR", conditions=[filter3, filter4])
+        and_op = LogicalOperation(operator="AND", conditions=[or_op, or_op2])
         
-        # Subject 01: has ieeg AND id in [01, 03]
-        assert and_op.evaluate(dataset_with_modalities.subjects[0], dataset_with_modalities)
-        # Subject 02: has anat but id not in [01, 03]
-        assert not and_op.evaluate(dataset_with_modalities.subjects[1], dataset_with_modalities)
-        # Subject 03: has both AND id in [01, 03]
-        assert and_op.evaluate(dataset_with_modalities.subjects[2], dataset_with_modalities)
+        # Subject 01: has ieeg AND id is 01
+        assert and_op.evaluate(dataset_with_modalities.subjects[0])
+        # Subject 02: has anat but id is 02
+        assert not and_op.evaluate(dataset_with_modalities.subjects[1])
+        # Subject 03: has both AND id is 03
+        assert and_op.evaluate(dataset_with_modalities.subjects[2])
     
     def test_serialization(self):
         """Test to_dict and from_dict."""
-        filter1 = SubjectIdFilter(subject_ids=["01"])
-        filter2 = ModalityFilter(modalities=["ieeg"])
+        filter1 = SubjectIdFilter(subject_id="01")
+        filter2 = ModalityFilter(modality="ieeg")
         
         original = LogicalOperation(operator="AND", conditions=[filter1, filter2])
         
@@ -671,18 +665,17 @@ class TestApplyFilter:
     
     def test_apply_subject_id_filter(self, basic_dataset):
         """Test applying subject ID filter to dataset."""
-        filter_obj = SubjectIdFilter(subject_ids=["01", "03"])
+        filter_obj = SubjectIdFilter(subject_id="01")
         
         result = apply_filter(basic_dataset, filter_obj)
         
-        assert len(result.subjects) == 2
+        assert len(result.subjects) == 1
         assert result.subjects[0].subject_id == "01"
-        assert result.subjects[1].subject_id == "03"
         assert result.root_path == basic_dataset.root_path
     
     def test_apply_modality_filter(self, dataset_with_modalities):
         """Test applying modality filter to dataset."""
-        filter_obj = ModalityFilter(modalities=["ieeg"])
+        filter_obj = ModalityFilter(modality="ieeg")
         
         result = apply_filter(dataset_with_modalities, filter_obj)
         
@@ -693,9 +686,11 @@ class TestApplyFilter:
     def test_apply_combined_filter(self, dataset_with_entities):
         """Test applying combined filter (AND operation)."""
         filter1 = EntityFilter(entity_code="task", operator="equals", value="VISU")
-        filter2 = SubjectIdFilter(subject_ids=["01", "03"])
+        filter2 = SubjectIdFilter(subject_id="01")
+        filter3 = SubjectIdFilter(subject_id="03")
+        or_op = LogicalOperation(operator="OR", conditions=[filter2, filter3])
         
-        combined = LogicalOperation(operator="AND", conditions=[filter1, filter2])
+        combined = LogicalOperation(operator="AND", conditions=[filter1, or_op])
         
         result = apply_filter(dataset_with_entities, combined)
         
@@ -705,7 +700,7 @@ class TestApplyFilter:
     
     def test_empty_result(self, basic_dataset):
         """Test filter that matches no subjects."""
-        filter_obj = SubjectIdFilter(subject_ids=["99"])
+        filter_obj = SubjectIdFilter(subject_id="99")
         
         result = apply_filter(basic_dataset, filter_obj)
         
@@ -714,7 +709,7 @@ class TestApplyFilter:
     
     def test_preserves_dataset_structure(self, dataset_with_participants):
         """Test that filtered dataset preserves original structure."""
-        filter_obj = SubjectIdFilter(subject_ids=["01"])
+        filter_obj = SubjectIdFilter(subject_id="01")
         
         result = apply_filter(dataset_with_participants, filter_obj)
         
@@ -732,15 +727,17 @@ class TestGetMatchingSubjectIds:
     
     def test_get_matching_ids(self, basic_dataset):
         """Test getting matching subject IDs."""
-        filter_obj = SubjectIdFilter(subject_ids=["01", "03"])
+        filter1 = SubjectIdFilter(subject_id="01")
+        filter2 = SubjectIdFilter(subject_id="03")
+        or_op = LogicalOperation(operator="OR", conditions=[filter1, filter2])
         
-        result = get_matching_subject_ids(basic_dataset, filter_obj)
+        result = get_matching_subject_ids(basic_dataset, or_op)
         
-        assert result == ["01", "03"]
+        assert sorted(result) == ["01", "03"]
     
     def test_no_matches(self, basic_dataset):
         """Test with filter that matches no subjects."""
-        filter_obj = SubjectIdFilter(subject_ids=["99"])
+        filter_obj = SubjectIdFilter(subject_id="99")
         
         result = get_matching_subject_ids(basic_dataset, filter_obj)
         
@@ -748,9 +745,12 @@ class TestGetMatchingSubjectIds:
     
     def test_all_match(self, basic_dataset):
         """Test with filter that matches all subjects."""
-        filter_obj = SubjectIdFilter(subject_ids=["01", "02", "03"])
+        filter1 = SubjectIdFilter(subject_id="01")
+        filter2 = SubjectIdFilter(subject_id="02")
+        filter3 = SubjectIdFilter(subject_id="03")
+        or_op = LogicalOperation(operator="OR", conditions=[filter1, filter2, filter3])
         
-        result = get_matching_subject_ids(basic_dataset, filter_obj)
+        result = get_matching_subject_ids(basic_dataset, or_op)
         
         assert len(result) == 3
         assert "01" in result
@@ -770,7 +770,7 @@ class TestEdgeCases:
         dataset = BIDSDataset(root_path=Path("/test"))
         dataset.subjects = []
         
-        filter_obj = SubjectIdFilter(subject_ids=["01"])
+        filter_obj = SubjectIdFilter(subject_id="01")
         result = apply_filter(dataset, filter_obj)
         
         assert len(result.subjects) == 0
@@ -781,14 +781,14 @@ class TestEdgeCases:
         
         # Empty AND should match all (identity element)
         for subject in basic_dataset.subjects:
-            assert and_op.evaluate(subject, basic_dataset)
+            assert and_op.evaluate(subject)
     
     def test_case_sensitivity_subject_ids(self):
         """Test that subject ID matching is case-sensitive."""
         dataset = BIDSDataset(root_path=Path("/test"))
         dataset.subjects = [BIDSSubject(subject_id="ABC")]
         
-        filter_obj = SubjectIdFilter(subject_ids=["abc"])
+        filter_obj = SubjectIdFilter(subject_id="abc")
         result = apply_filter(dataset, filter_obj)
         
         assert len(result.subjects) == 0  # Case-sensitive, no match
