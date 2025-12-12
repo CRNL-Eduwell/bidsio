@@ -14,12 +14,12 @@ from src.bidsio.core.models import (
     BIDSSubject,
     BIDSSession,
     BIDSFile,
-    BIDSDerivative,
-    ExportRequest,
-    SelectedEntities,
-    ExportStats
+    BIDSDerivative
 )
 from src.bidsio.core.export import (
+    ExportRequest,
+    SelectedEntities,
+    ExportStats,
     export_dataset,
     generate_file_list,
     calculate_export_stats,

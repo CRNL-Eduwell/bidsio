@@ -10,8 +10,7 @@ from pathlib import Path
 from PySide6.QtCore import QThread, Signal
 
 from bidsio.core.repository import BidsRepository
-from bidsio.core.models import ExportRequest
-from bidsio.core.export import export_dataset
+from bidsio.core.export import ExportRequest, export_dataset
 from bidsio.infrastructure.logging_config import get_logger
 
 

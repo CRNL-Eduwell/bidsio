@@ -6,10 +6,70 @@ This module handles exporting filtered BIDS datasets to new locations.
 
 import json
 import shutil
+from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Callable, Optional
 
-from .models import BIDSDataset, BIDSSubject, BIDSSession, BIDSFile, ExportRequest, ExportStats, SelectedEntities
+from .models import BIDSDataset, BIDSSubject, BIDSSession, BIDSFile
+
+
+@dataclass
+class SelectedEntities:
+    """
+    Entities selected for export.
+    
+    This represents which entity values should be included in the export.
+    Each entity maps to a list of selected values.
+    """
+    
+    entities: dict[str, list[str]] = field(default_factory=dict)
+    """Dictionary mapping entity codes to selected values (e.g., {'sub': ['01', '02'], 'task': ['rest']})."""
+    
+    derivative_pipelines: list[str] = field(default_factory=list)
+    """List of derivative pipeline names to include (e.g., ['fmriprep', 'freesurfer'])."""
+
+
+@dataclass
+class ExportRequest:
+    """
+    Specification for exporting a subset of a BIDS dataset.
+    """
+    
+    source_dataset: BIDSDataset
+    """The source dataset to export from."""
+    
+    selected_entities: SelectedEntities
+    """Entities selected for export."""
+    
+    output_path: Path
+    """Destination directory for the exported dataset."""
+    
+    overwrite: bool = False
+    """Whether to overwrite/merge with existing destination."""
+
+
+@dataclass
+class ExportStats:
+    """
+    Statistics about files to be exported.
+    """
+    
+    file_count: int = 0
+    """Number of files to export."""
+    
+    total_size: int = 0
+    """Total size in bytes."""
+    
+    def get_size_string(self) -> str:
+        """Get human-readable size string."""
+        if self.total_size < 1024:
+            return f"{self.total_size} B"
+        elif self.total_size < 1024 ** 2:
+            return f"{self.total_size / 1024:.1f} KB"
+        elif self.total_size < 1024 ** 3:
+            return f"{self.total_size / (1024 ** 2):.1f} MB"
+        else:
+            return f"{self.total_size / (1024 ** 3):.2f} GB"
 
 
 def export_dataset(

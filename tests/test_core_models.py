@@ -11,7 +11,9 @@ from src.bidsio.core.models import (
     BIDSFile,
     BIDSSession,
     BIDSSubject,
-    BIDSDataset,
+    BIDSDataset
+)
+from src.bidsio.core.export import (
     SelectedEntities,
     ExportRequest
 )

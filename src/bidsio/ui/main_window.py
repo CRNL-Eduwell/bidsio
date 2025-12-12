@@ -19,11 +19,8 @@ from qt_material import apply_stylesheet
 from bidsio.infrastructure.logging_config import get_logger
 from bidsio.config.settings import get_settings_manager, get_settings
 from bidsio.core.repository import BidsRepository
-from bidsio.core.models import (
-    BIDSDataset, BIDSSubject, BIDSSession, BIDSFile, BIDSDerivative,
-    LogicalOperation
-)
-from bidsio.core.filters import apply_filter
+from bidsio.core.models import BIDSDataset, BIDSSubject, BIDSSession, BIDSFile, BIDSDerivative
+from bidsio.core.filters import apply_filter, LogicalOperation
 from bidsio.ui.about_dialog import AboutDialog
 from bidsio.ui.preferences_dialog import PreferencesDialog
 from bidsio.ui.json_viewer_dialog import JsonViewerDialog

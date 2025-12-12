@@ -22,8 +22,8 @@ from PySide6.QtGui import QIcon, QKeySequence, QShortcut, QBrush, QColor
 from bidsio.infrastructure.logging_config import get_logger
 from bidsio.infrastructure.paths import get_filter_presets_directory
 from bidsio.ui.text_viewer_dialog import TextViewerDialog
-from bidsio.core.models import (
-    BIDSDataset,
+from bidsio.core.models import BIDSDataset
+from bidsio.core.filters import (
     FilterCondition,
     LogicalOperation,
     SubjectIdFilter,

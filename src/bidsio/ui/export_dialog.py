@@ -11,8 +11,8 @@ from PySide6.QtWidgets import QDialog, QFileDialog, QHBoxLayout, QLabel, QPushBu
 from PySide6.QtCore import Qt, Slot, QTimer
 
 from bidsio.infrastructure.logging_config import get_logger
-from bidsio.core.models import BIDSDataset, ExportRequest, ExportStats, SelectedEntities
-from bidsio.core.export import calculate_export_stats
+from bidsio.core.models import BIDSDataset
+from bidsio.core.export import ExportRequest, ExportStats, SelectedEntities, calculate_export_stats
 from bidsio.core.entity_config import get_entity_full_name
 from bidsio.ui.entity_selector_dialog import EntitySelectorDialog
 from bidsio.ui.forms.export_dialog_ui import Ui_ExportDialog

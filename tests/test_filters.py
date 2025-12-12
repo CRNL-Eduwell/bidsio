@@ -13,16 +13,16 @@ from src.bidsio.core.models import (
     BIDSSubject,
     BIDSSession,
     BIDSFile,
-    IEEGData,
+    IEEGData
+)
+from src.bidsio.core.filters import (
     SubjectIdFilter,
     ModalityFilter,
     ParticipantAttributeFilter,
     EntityFilter,
     ChannelAttributeFilter,
     ElectrodeAttributeFilter,
-    LogicalOperation
-)
-from src.bidsio.core.filters import (
+    LogicalOperation,
     apply_filter,
     get_matching_subject_ids
 )
