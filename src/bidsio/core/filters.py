@@ -61,7 +61,7 @@ class SubjectIdFilter(FilterCondition):
     subject_id: str = ''
     """Subject ID to match."""
     
-    def evaluate(self, subject: BIDSSubject) -> bool:
+    def evaluate(self, subject: 'BIDSSubject') -> bool:
         """Check if subject ID matches."""
         if not self.subject_id:
             return True
@@ -90,7 +90,7 @@ class ModalityFilter(FilterCondition):
     modality: str = ''
     """Modality to match (e.g., 'ieeg', 'anat')."""
     
-    def evaluate(self, subject: BIDSSubject) -> bool:
+    def evaluate(self, subject: 'BIDSSubject') -> bool:
         """Check if subject has files with the specified modality."""
         if not self.modality:
             return True
@@ -137,7 +137,7 @@ class ParticipantAttributeFilter(FilterCondition):
     value: str | int | float = ''
     """Value to compare against."""
     
-    def evaluate(self, subject: BIDSSubject) -> bool:
+    def evaluate(self, subject: 'BIDSSubject') -> bool:
         """Check if participant attribute matches the condition."""
         if not self.attribute_name or self.value == '':
             return True
@@ -216,7 +216,7 @@ class EntityFilter(FilterCondition):
     value: str = ''
     """Value to compare against."""
     
-    def evaluate(self, subject: BIDSSubject) -> bool:
+    def evaluate(self, subject: 'BIDSSubject') -> bool:
         """Check if subject has files with entity values matching the condition."""
         if not self.entity_code or self.value == '':
             return True
@@ -289,7 +289,7 @@ class ChannelAttributeFilter(FilterCondition):
     value: str | int | float = ''
     """Value to compare against."""
     
-    def evaluate(self, subject: BIDSSubject) -> bool:
+    def evaluate(self, subject: 'BIDSSubject') -> bool:
         """Check if subject has iEEG channels matching the condition."""
         if not self.attribute_name or self.value == '':
             return True
@@ -380,7 +380,7 @@ class ElectrodeAttributeFilter(FilterCondition):
     value: str | int | float = ''
     """Value to compare against."""
     
-    def evaluate(self, subject: BIDSSubject) -> bool:
+    def evaluate(self, subject: 'BIDSSubject') -> bool:
         """Check if subject has iEEG electrodes matching the condition."""
         if not self.attribute_name or self.value == '':
             return True
@@ -472,7 +472,7 @@ class LogicalOperation:
     conditions: list['FilterCondition | LogicalOperation'] = field(default_factory=list)
     """List of child conditions or nested logical operations."""
     
-    def evaluate(self, subject: BIDSSubject) -> bool:
+    def evaluate(self, subject: 'BIDSSubject') -> bool:
         """Evaluate the logical operation recursively."""
         if not self.conditions:
             return True
