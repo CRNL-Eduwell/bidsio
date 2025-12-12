@@ -123,8 +123,3 @@ def find_sidecar_tsv(data_file: Path, tsv_type: str) -> Optional[Path]:
         return tsv_path
     
     return None
-
-
-# TODO: Add function to validate TSV structure against BIDS specification
-# TODO: Add function to merge TSV data from inheritance hierarchy (dataset, subject, session)
-# TODO: Add caching mechanism for frequently accessed TSV files

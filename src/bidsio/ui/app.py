@@ -56,8 +56,6 @@ def main():
     
     logger.info("Main window displayed")
     
-    # TODO: handle command-line arguments (e.g., open dataset path)
-    
     # Run event loop
     exit_code = app.exec()
     

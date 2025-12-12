@@ -21,7 +21,7 @@ from bidsio.config.settings import get_settings_manager, get_settings
 from bidsio.core.repository import BidsRepository
 from bidsio.core.models import (
     BIDSDataset, BIDSSubject, BIDSSession, BIDSFile, BIDSDerivative,
-    FilterCriteria, LogicalOperation
+    LogicalOperation
 )
 from bidsio.core.filters import apply_filter
 from bidsio.ui.about_dialog import AboutDialog
@@ -448,18 +448,6 @@ class MainWindow(QMainWindow):
                 logger.info(f"Theme applied: {settings.theme}")
         except Exception as e:
             logger.error(f"Failed to apply theme: {e}")
-    
-    @Slot()
-    def apply_filters(self):
-        """Apply current filter criteria to the dataset."""
-        # TODO: gather filter criteria from UI controls
-        # TODO: create FilterCriteria object
-        # TODO: query repository with criteria
-        # TODO: update view model with filtered results
-        # TODO: refresh UI
-        
-        logger.info("Applying filters")
-        pass
     
     @Slot()
     def export_selection(self):
@@ -1568,9 +1556,3 @@ class MainWindow(QMainWindow):
         
         logger.info(f"Main window closing (size: {self.width()}x{self.height()})")
         event.accept()
-
-
-# TODO: create separate dialog classes for:
-# - Export configuration dialog
-# - Filter configuration dialog
-# - Dataset information dialog

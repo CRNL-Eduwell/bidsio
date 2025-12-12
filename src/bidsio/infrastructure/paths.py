@@ -152,8 +152,3 @@ def get_filter_presets_directory() -> Path:
     presets_dir = get_persistent_data_directory() / "presets"
     presets_dir.mkdir(parents=True, exist_ok=True)
     return presets_dir
-
-
-# TODO: add functions for handling BIDS-specific paths
-# TODO: add function to sanitize filenames for cross-platform compatibility
-# TODO: add function to check available disk space before export

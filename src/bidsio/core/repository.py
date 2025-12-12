@@ -8,7 +8,7 @@ without exposing implementation details.
 from pathlib import Path
 from typing import Optional, Callable
 
-from .models import BIDSDataset, BIDSSubject, FilterCriteria
+from .models import BIDSDataset, BIDSSubject
 from ..infrastructure.bids_loader import BidsLoader
 from ..config.settings import get_settings
 
@@ -140,33 +140,6 @@ class BidsRepository:
             return [s.subject_id for s in self._dataset.subjects]
         else:
             return []
-    
-    def query(self, criteria: FilterCriteria) -> BIDSDataset:
-        """
-        Query the dataset with filter criteria.
-        
-        Args:
-            criteria: Filtering criteria to apply.
-            
-        Returns:
-            A new BIDSDataset containing only the filtered data.
-        """
-        # TODO: implement filtering logic
-        # TODO: consider performance for large datasets
-        # TODO: delegate to filters module
-        raise NotImplementedError("query() is not implemented yet.")
-    
-    def get_summary_statistics(self) -> dict:
-        """
-        Get summary statistics about the dataset.
-        
-        Returns:
-            Dictionary with statistics (subject count, session count, etc.).
-        """
-        # TODO: implement statistics gathering
-        # TODO: include counts for subjects, sessions, runs
-        # TODO: include unique tasks, modalities
-        raise NotImplementedError("get_summary_statistics is not implemented yet.")
     
     def load_ieeg_data_for_all_subjects(self, progress_callback: Optional[Callable[[int, int, str], None]] = None):
         """

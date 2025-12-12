@@ -12,7 +12,7 @@ from pathlib import Path
 from ..infrastructure.logging_config import setup_logging, get_logger
 from ..infrastructure.bids_loader import is_bids_dataset, get_bids_version
 from ..core.repository import BidsRepository
-from ..core.models import FilterCriteria, ExportRequest
+from ..core.models import ExportRequest
 
 
 logger = get_logger(__name__)
@@ -162,7 +162,7 @@ def cmd_export(args: argparse.Namespace) -> int:
     # dataset = repository.load()
     
     # TODO: create filter criteria from arguments
-    # criteria = FilterCriteria(
+    # Old filtering code removed (FilterCriteria is obsolete)
     #     subject_ids=args.subjects,
     #     session_ids=args.sessions,
     #     task_names=args.tasks,

@@ -43,15 +43,16 @@ class FilterBuilderDialog(QDialog):
     """
     Dialog for building filter expressions.
     
-    Currently implements Simple mode with basic filters.
+    Provides two modes for creating filters:
     
-    TODO: Implement Advanced mode with:
-    - Tree view for nested logical operations (AND/OR/NOT)
-    - Visual representation of filter logic
-    - Drag and drop condition reordering
-    - Condition editor panel with dynamic forms
-    - Real-time syntax validation
-    - Filter expression preview/summary
+    - **Simple Mode**: Quick filter creation with rows of conditions combined with AND logic.
+      Ideal for straightforward filtering needs.
+    
+    - **Advanced Mode**: Full logical expression builder with tree view for nested operations
+      (AND/OR/NOT), visual representation, cut/copy/paste, condition reordering, and 
+      dynamic editor panels. Supports complex filter expressions.
+    
+    Both modes support saving and loading filter presets.
     """
     
     def __init__(self, dataset: BIDSDataset, previous_filter: Optional[LogicalOperation] = None, parent=None):
@@ -2050,12 +2051,3 @@ class FilterBuilderDialog(QDialog):
             )
         
         return None
-
-
-# TODO: Create separate widget classes for each filter type for better modularity
-# TODO: Implement filter preview showing affected subject count
-# TODO: Add filter description/summary generation
-# TODO: Implement filter validation before application
-# TODO: Add keyboard shortcuts for common operations
-# TODO: Support filter composition (combining multiple saved presets)
-

@@ -37,9 +37,7 @@ class BIDSFile:
     - In eager mode: Loaded during dataset parsing and stored here.
     - In lazy mode: Set to None initially, loaded on-demand via load_metadata().
     """
-    
-    # TODO: add validation for BIDS compliance
-    
+        
     def load_metadata(self, force_reload: bool = False) -> Optional[dict]:
         """
         Load metadata from the associated JSON sidecar file (lazy loading).
@@ -79,6 +77,8 @@ class BIDSFile:
         except (json.JSONDecodeError, IOError) as e:
             # Log error but don't fail - metadata is optional
             return None
+
+
 @dataclass
 class BIDSSession:
     """Represents a single session within a BIDS subject."""
@@ -88,9 +88,6 @@ class BIDSSession:
     
     files: list[BIDSFile] = field(default_factory=list)
     """All files in this session (run info is in file entities)."""
-    
-    # TODO: add methods to filter files by task, modality, or run
-    # TODO: consider session-level metadata
 
 
 @dataclass
@@ -361,34 +358,6 @@ class SelectedEntities:
     
     derivative_pipelines: list[str] = field(default_factory=list)
     """List of derivative pipeline names to include (e.g., ['fmriprep', 'freesurfer'])."""
-
-
-@dataclass
-class FilterCriteria:
-    """
-    Filtering options for selecting a subset of a BIDS dataset.
-    
-    All fields are optional; None means no filtering on that dimension.
-    NOTE: This class is kept for backwards compatibility but export now uses SelectedEntities.
-    """
-    
-    subject_ids: Optional[list[str]] = None
-    """List of subject IDs to include."""
-    
-    session_ids: Optional[list[str]] = None
-    """List of session IDs to include."""
-    
-    task_names: Optional[list[str]] = None
-    """List of task names to include."""
-    
-    modalities: Optional[list[str]] = None
-    """List of modalities to include."""
-    
-    run_ids: Optional[list[str]] = None
-    """List of run IDs to include."""
-    
-    # TODO: add more filtering options (e.g., acquisition date, file type)
-    # TODO: add validation to ensure criteria are sensible
 
 
 @dataclass

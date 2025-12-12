@@ -97,7 +97,7 @@ You are assisting in developing **bidsio**, a Python desktop application for exp
 │       │   └── settings.py
 │       ├── core/                 # Pure domain logic (NO GUI imports!)
 │       │   ├── __init__.py
-│       │   ├── models.py         # Data models (BIDSDataset, FilterCriteria, etc.)
+│       │   ├── models.py         # Data models (BIDSDataset, SelectedEntities, etc.)
 │       │   ├── repository.py    # BidsRepository pattern
 │       │   ├── filters.py       # Filtering operations
 │       │   └── export.py        # Export functionality
@@ -136,7 +136,7 @@ You are assisting in developing **bidsio**, a Python desktop application for exp
 **Dependencies**: Python standard library, pydantic, typing  
 **Forbidden**: Any GUI imports (PySide6, Qt)
 
-- `models.py`: Dataclasses for BIDS entities (BIDSFile, BIDSSession, BIDSSubject, BIDSDataset, FilterCriteria, ExportRequest)
+- `models.py`: Dataclasses for BIDS entities (BIDSFile, BIDSSession, BIDSSubject, BIDSDataset, SelectedEntities, ExportRequest)
 - `repository.py`: Repository pattern for dataset access
 - `filters.py`: Functions for filtering datasets by criteria
 - `export.py`: Logic for exporting dataset subsets

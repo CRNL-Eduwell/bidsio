@@ -55,9 +55,6 @@ class AppSettings:
     # Recent files
     recent_datasets: list[str] = field(default_factory=list)
     max_recent_items: int = 10
-    
-    # TODO: add settings for filter defaults
-    # TODO: add settings for export templates
 
 
 class SettingsManager:
@@ -249,8 +246,3 @@ def get_settings() -> AppSettings:
         The current AppSettings object.
     """
     return get_settings_manager().get()
-
-
-# TODO: add validators for settings values
-# TODO: add migration logic for settings file format changes
-# TODO: consider using environment variables for some settings
