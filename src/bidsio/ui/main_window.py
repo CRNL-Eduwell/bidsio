@@ -133,6 +133,13 @@ class MainWindow(QMainWindow):
         if hasattr(self.ui, 'clearFilterButton'):
             self.ui.clearFilterButton.clicked.connect(self._clear_filter)
         
+        # Connect filter menu actions
+        if hasattr(self.ui, 'actionFilter'):
+            self.ui.actionFilter.triggered.connect(self._show_filter_dialog)
+        
+        if hasattr(self.ui, 'actionClearFilter'):
+            self.ui.actionClearFilter.triggered.connect(self._clear_filter)
+        
         # Connect tree widget selection
         if hasattr(self.ui, 'datasetTreeWidget'):
             self.ui.datasetTreeWidget.itemSelectionChanged.connect(self._on_tree_selection_changed)
@@ -387,6 +394,8 @@ class MainWindow(QMainWindow):
             self.ui.exportButton.setEnabled(True)
         if hasattr(self.ui, 'filterButton'):
             self.ui.filterButton.setEnabled(True)
+        if hasattr(self.ui, 'actionFilter'):
+            self.ui.actionFilter.setEnabled(True)
         
         # Show success message
         num_subjects = len(dataset.subjects)
@@ -620,9 +629,11 @@ class MainWindow(QMainWindow):
                 f"Filter active: {matching_count} of {total_count} subjects match"
             )
             
-            # Enable clear filter button
+            # Enable clear filter button and menu action
             if hasattr(self.ui, 'clearFilterButton'):
                 self.ui.clearFilterButton.setEnabled(True)
+            if hasattr(self.ui, 'actionClearFilter'):
+                self.ui.actionClearFilter.setEnabled(True)
             
             logger.info(f"Filter applied: {matching_count}/{total_count} subjects match")
             
@@ -644,9 +655,11 @@ class MainWindow(QMainWindow):
         # Update tree view (remove gray-out)
         self._populate_tree()
         
-        # Disable clear filter button
+        # Disable clear filter button and menu action
         if hasattr(self.ui, 'clearFilterButton'):
             self.ui.clearFilterButton.setEnabled(False)
+        if hasattr(self.ui, 'actionClearFilter'):
+            self.ui.actionClearFilter.setEnabled(False)
         
         # Update status bar
         self.statusBar().showMessage("Filter cleared - showing all subjects")
