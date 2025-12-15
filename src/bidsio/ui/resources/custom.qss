@@ -1,0 +1,26 @@
+QToolButton {{
+  height: 26px;
+  width: 26px;
+  border-right: 0px;
+  border-left: 0px;
+}}
+
+QToolButton:hover {{
+  border-right: 0px;
+  border-left: 0px;
+}}
+
+QToolButton:pressed {{
+  border-right: 0px;
+  border-left: 0px;
+}}
+
+QToolButton:checked {{
+  border-left: 0px;
+  border-right: 0px;
+}}
+
+QTreeView::item {{
+  min-height: 20px;
+  max-height: 20px;
+}}

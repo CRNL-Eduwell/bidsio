@@ -279,6 +279,19 @@ NOT: Child condition must not match (1 child only)</string>
                 </property>
                </widget>
               </item>
+              <item>
+               <spacer name="verticalSpacer_6">
+                <property name="orientation">
+                 <enum>Qt::Vertical</enum>
+                </property>
+                <property name="sizeHint" stdset="0">
+                 <size>
+                  <width>20</width>
+                  <height>40</height>
+                 </size>
+                </property>
+               </spacer>
+              </item>
              </layout>
             </widget>
             <widget class="QWidget" name="modalityDetailsPage">
@@ -292,6 +305,19 @@ NOT: Child condition must not match (1 child only)</string>
               </item>
               <item>
                <widget class="QComboBox" name="modalityComboBox"/>
+              </item>
+              <item>
+               <spacer name="verticalSpacer_4">
+                <property name="orientation">
+                 <enum>Qt::Vertical</enum>
+                </property>
+                <property name="sizeHint" stdset="0">
+                 <size>
+                  <width>20</width>
+                  <height>40</height>
+                 </size>
+                </property>
+               </spacer>
               </item>
              </layout>
             </widget>
@@ -346,6 +372,19 @@ NOT: Child condition must not match (1 child only)</string>
                  <string>e.g., rest</string>
                 </property>
                </widget>
+              </item>
+              <item>
+               <spacer name="verticalSpacer_3">
+                <property name="orientation">
+                 <enum>Qt::Vertical</enum>
+                </property>
+                <property name="sizeHint" stdset="0">
+                 <size>
+                  <width>20</width>
+                  <height>40</height>
+                 </size>
+                </property>
+               </spacer>
               </item>
              </layout>
             </widget>
@@ -411,6 +450,19 @@ NOT: Child condition must not match (1 child only)</string>
                 </property>
                </widget>
               </item>
+              <item>
+               <spacer name="verticalSpacer_5">
+                <property name="orientation">
+                 <enum>Qt::Vertical</enum>
+                </property>
+                <property name="sizeHint" stdset="0">
+                 <size>
+                  <width>20</width>
+                  <height>40</height>
+                 </size>
+                </property>
+               </spacer>
+              </item>
              </layout>
             </widget>
             <widget class="QWidget" name="channelAttributeDetailsPage">
@@ -475,6 +527,19 @@ NOT: Child condition must not match (1 child only)</string>
                 </property>
                </widget>
               </item>
+              <item>
+               <spacer name="verticalSpacer">
+                <property name="orientation">
+                 <enum>Qt::Vertical</enum>
+                </property>
+                <property name="sizeHint" stdset="0">
+                 <size>
+                  <width>20</width>
+                  <height>40</height>
+                 </size>
+                </property>
+               </spacer>
+              </item>
              </layout>
             </widget>
             <widget class="QWidget" name="electrodeAttributeDetailsPage">
@@ -538,6 +603,19 @@ NOT: Child condition must not match (1 child only)</string>
                  <string>e.g., platinum</string>
                 </property>
                </widget>
+              </item>
+              <item>
+               <spacer name="verticalSpacer_2">
+                <property name="orientation">
+                 <enum>Qt::Vertical</enum>
+                </property>
+                <property name="sizeHint" stdset="0">
+                 <size>
+                  <width>20</width>
+                  <height>40</height>
+                 </size>
+                </property>
+               </spacer>
               </item>
              </layout>
             </widget>

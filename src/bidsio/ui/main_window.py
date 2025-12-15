@@ -12,11 +12,12 @@ from collections import Counter
 
 from PySide6.QtWidgets import QMainWindow, QFileDialog, QMessageBox, QTreeWidgetItem, QApplication
 from PySide6.QtGui import QAction, QIcon, QColor, QBrush
-from PySide6.QtCore import Slot, Qt
+from PySide6.QtCore import Slot, Qt, QFile, QIODevice
 from numpy import invert
 from qt_material import apply_stylesheet
 
 from bidsio.infrastructure.logging_config import get_logger
+from bidsio.infrastructure.paths import get_persistent_data_directory
 from bidsio.config.settings import get_settings_manager, get_settings
 from bidsio.core.repository import BidsRepository
 from bidsio.core.models import BIDSDataset, BIDSSubject, BIDSSession, BIDSFile, BIDSDerivative
@@ -31,7 +32,6 @@ from bidsio.ui.export_dialog import ExportDialog
 from bidsio.ui.filter_builder_dialog import FilterBuilderDialog
 from bidsio.ui.workers import DatasetLoaderThread, ExportWorkerThread
 from bidsio.ui.widgets.details_panel import DetailsPanel
-from bidsio.ui.widgets.delegates import CompactDelegate
 from bidsio.ui.forms.main_window_ui import Ui_MainWindow
 
 
@@ -144,7 +144,7 @@ class MainWindow(QMainWindow):
         if hasattr(self.ui, 'datasetTreeWidget'):
             self.ui.datasetTreeWidget.itemSelectionChanged.connect(self._on_tree_selection_changed)
             self.ui.datasetTreeWidget.itemDoubleClicked.connect(self._on_tree_item_double_clicked)
-            self.ui.datasetTreeWidget.setItemDelegate(CompactDelegate(row_height=24, parent=self))
+            #self.ui.datasetTreeWidget.setItemDelegate(CompactDelegate(row_height=24, parent=self))
             self.ui.datasetTreeWidget.setUniformRowHeights(True)
         
         logger.debug("Signals connected")
@@ -402,6 +402,42 @@ class MainWindow(QMainWindow):
         dataset_name = dataset.dataset_description.get('Name', 'Unknown')
         logger.info(f"Dataset loaded successfully: {dataset_name}, {num_subjects} subjects")
     
+    def _extract_custom_qss(self) -> Optional[Path]:
+        """
+        Extract the custom QSS file from resources to persistent data folder.
+        
+        Returns:
+            Path to the extracted QSS file, or None if extraction failed.
+        """
+        try:
+            # Get persistent data directory
+            persistent_dir = get_persistent_data_directory()
+            persistent_dir.mkdir(parents=True, exist_ok=True)
+            
+            # Target path for the custom QSS file
+            qss_target = persistent_dir / "custom.qss"
+            
+            # Read the QSS file from Qt resources
+            qss_resource = QFile(":/custom.qss")
+            if not qss_resource.open(QIODevice.OpenModeFlag.ReadOnly | QIODevice.OpenModeFlag.Text):
+                logger.error(f"Failed to open resource: {qss_resource.errorString()}")
+                return None
+            
+            # Read content from resource
+            qss_content = bytes(qss_resource.readAll().data()).decode('utf-8')
+            qss_resource.close()
+            
+            # Write to persistent data folder
+            with open(qss_target, 'w', encoding='utf-8') as f:
+                f.write(qss_content)
+            
+            logger.info(f"Custom QSS file extracted to: {qss_target}")
+            return qss_target
+            
+        except Exception as e:
+            logger.error(f"Failed to extract custom QSS file: {e}")
+            return None
+    
     def apply_theme(self, theme: str):
         """
         Apply the specified theme to the application.
@@ -416,9 +452,22 @@ class MainWindow(QMainWindow):
             
             invert_secondary = theme.startswith('light_')
             
+            # Extract custom QSS file to persistent data folder
+            custom_qss_path = self._extract_custom_qss()
+            
             if app:
-                apply_stylesheet(app, theme=theme, invert_secondary=invert_secondary)
-                logger.info(f"Theme applied: {theme}")
+                # Apply theme with custom QSS file if available
+                if custom_qss_path and custom_qss_path.exists():
+                    apply_stylesheet(
+                        app, 
+                        theme=theme, 
+                        invert_secondary=invert_secondary, 
+                        css_file=str(custom_qss_path)
+                    )
+                    logger.info(f"Theme applied: {theme} with custom QSS: {custom_qss_path}")
+                else:
+                    apply_stylesheet(app, theme=theme, invert_secondary=invert_secondary, css_file=None)
+                    logger.info(f"Theme applied: {theme} (without custom QSS)")
         except Exception as e:
             logger.error(f"Failed to apply theme: {e}")
 
