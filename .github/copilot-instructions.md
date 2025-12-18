@@ -9,7 +9,7 @@ You are assisting in developing **bidsio**, a Python desktop application for exp
 - Browsing and inspecting dataset contents (subjects, sessions, runs, files)
 - Filtering data by various criteria (subject IDs, sessions, tasks, modalities)
 - Exporting subsets of datasets based on user selections
-- Both GUI and CLI interfaces
+- Graphical user interface (GUI) built with PySide6
 
 ## Tech Stack
 
@@ -115,9 +115,6 @@ You are assisting in developing **bidsio**, a Python desktop application for exp
 │       │   │   └── __init__.py
 │       │   └── forms/           # Qt Designer .ui files and generated Python
 │       │       └── main_window.ui
-│       └── cli/                  # Command-line interface
-│           ├── __init__.py
-│           └── main.py
 ├── tests/
 │   ├── __init__.py
 │   ├── conftest.py              # Pytest fixtures
@@ -160,12 +157,6 @@ You are assisting in developing **bidsio**, a Python desktop application for exp
 - `view_models.py`: Qt models (QAbstractTableModel, QAbstractItemModel) for views
 - `widgets/`: Custom reusable widgets
 - `forms/`: Qt Designer `.ui` files (XML) and generated Python modules
-
-### `cli/` - Command Line Interface
-**Purpose**: Command-line tools for dataset operations  
-**Dependencies**: argparse, core modules, infrastructure modules
-
-- `main.py`: CLI commands (info, validate, export)
 
 ### `config/` - Configuration
 **Purpose**: Application settings and configuration management
@@ -423,7 +414,6 @@ class MyDialog(QDialog):
 ### Debugging
 Use provided launch configurations:
 - **Run GUI**: Launches `src/bidsio/ui/app.py`
-- **Run CLI**: Launches `src/bidsio/cli/main.py`
 - **pytest: Current File**: Runs tests in the current file
 
 ### Python Environment
@@ -472,12 +462,22 @@ Common modality types:
 
 ## Project Status
 
-This project is in **early development** with skeleton implementations. Many modules contain TODOs and `NotImplementedError` stubs. When implementing:
+This project is **feature-complete** and in **maintenance mode**. The core functionality is fully implemented:
 
-1. Start with `infrastructure/bids_loader.py` for actual BIDS parsing
-2. Implement filtering logic in `core/filters.py`
-3. Build export functionality in `core/export.py`
-4. Design complete UI in Qt Designer
-5. Wire up UI to domain logic
+✅ **Completed Features:**
+- Full BIDS dataset loading with derivatives and iEEG support
+- Hierarchical dataset browsing and exploration
+- Advanced filtering system (Simple & Advanced modes with logical operations)
+- Entity-based dataset export with progress tracking
+- Comprehensive file viewers (JSON, TSV, text)
+- Preferences and settings management
+- Filter preset system
+- Participant, channel, and electrode metadata filtering
+- Material Design theming
 
-Focus on **incremental, testable progress** while maintaining architectural boundaries.
+When maintaining or extending:
+- Follow the established architecture patterns
+- Maintain strict separation between core/infrastructure/ui layers
+- Add comprehensive tests for new features
+- Keep all UI in Qt Designer `.ui` files
+- Focus on **bug fixes, optimizations, and minor enhancements**
