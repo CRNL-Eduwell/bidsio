@@ -500,3 +500,7 @@ Copyright © 2025
 Benjamin BONTEMPS
 
 This license allows unrestricted use, modification, and redistribution of the software, while prohibiting the use of the author's name for endorsement without permission. See the [`LICENSE`](https://raw.githubusercontent.com/CRNL-Eduwell/bidsio/master/LICENSE) file for details.
+
+## Acknowledgements
+
+This project has received funding from the European Union's Research and Innovation Program Horizon Europe under Grant Agreement [No. 101147319](https://doi.org/10.3030/101147319) (EBRAINS 2.0).
