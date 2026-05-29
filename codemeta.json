@@ -1,0 +1,78 @@
+{
+  "@context": "https://w3id.org/codemeta/3.0",
+  "@type": "SoftwareSourceCode",
+  "name": "bidsio",
+  "description": "bidsio is a desktop application designed to make BIDS neuroimaging datasets easier to explore, filter, and export. With its clear graphical interface, users can quickly browse subjects, sessions, modalities, and files while inspecting associated metadata. Powerful filtering tools make it simple to create clean, reusable dataset subsets while preserving the BIDS structure. It is built to save time, reduce manual handling, and help researchers work with their data more confidently.",
+  "author": [
+    {
+      "givenName": "Benjamin",
+      "familyName": "BONTEMPS",
+      "type": "Person"
+    },
+    {
+      "givenName": "Jean Philippe",
+      "familyName": "LACHAUX",
+      "type": "Person"
+    }
+  ],
+  "license": [
+    "https://spdx.org/licenses/BSD-3-Clause"
+  ],
+  "version": "0.1.0",
+  "dateModified": "2025-12-18",
+  "codeRepository": "https://github.com/CRNL-Eduwell/bidsio",
+  "downloadUrl": "https://github.com/CRNL-Eduwell/bidsio/archive/refs/heads/master.zip",
+  "relatedLink": [
+    "https://github.com/CRNL-Eduwell/bidsio/blob/master/README.md"
+  ],
+  "programmingLanguage": [
+    "Python"
+  ],
+  "operatingSystem": [
+    "Windows",
+    "Linux",
+    "macOS"
+  ],
+  "availableOnDevice": [
+    "desktop"
+  ],
+  "softwareRequirements": [
+    "Python >=3.13,<3.14"
+  ],
+  "developmentStatus": "active",
+  "keywords": [
+    "BIDS",
+    "neuroimaging",
+    "brain imaging",
+    "dataset explorer",
+    "dataset filtering",
+    "dataset export",
+    "BIDS dataset",
+    "BIDS derivatives",
+    "iEEG",
+    "fMRI",
+    "MRI",
+    "research data",
+    "Python",
+    "PySide6",
+    "Qt",
+    "desktop application",
+    "metadata viewer",
+    "data management",
+    "reproducible research",
+    "neuroscience"
+  ],
+  "applicationCategory": "Scientific/Engineering",
+  "maintainer": [
+    {
+      "givenName": "Benjamin",
+      "familyName": "BONTEMPS",
+      "type": "Person"
+    }
+  ],
+  "funder": {
+    "type": "Organization",
+    "name": "EBRAINS 2.0"
+  },
+  "funding": "101147319"
+}

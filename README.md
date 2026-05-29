@@ -57,7 +57,7 @@ A Python desktop application for exploring, filtering, and exporting BIDS (Brain
 
 ## Requirements
 
-- **Python**: 3.13.7 (strictly enforced)
+- **Python**: 3.13.x (`>=3.13,<3.14`)
 - **GUI Framework**: PySide6 (Qt6 for Python)
 - **Dependencies**: See [`requirements.txt`](requirements.txt) for complete list
 
