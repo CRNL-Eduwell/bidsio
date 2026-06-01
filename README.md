@@ -8,7 +8,7 @@ A Python desktop application for exploring, filtering, and exporting BIDS (Brain
 
 ## Overview
 
-**bidsio** is a comprehensive tool for managing and working with BIDS-compliant neuroimaging datasets. It provides both a modern graphical interface and command-line tools for dataset operations.
+`bidsio` is a comprehensive tool for managing and working with BIDS-compliant neuroimaging datasets. It provides both a modern graphical interface and command-line tools for dataset operations.
 
 ### Core Features
 
